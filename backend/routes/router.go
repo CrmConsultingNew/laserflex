@@ -25,7 +25,6 @@ func Router() {
 
 	http.HandleFunc("/api/connect_widget", widget.ConnectionBitrixWidget)
 
-	http.HandleFunc("/api/connect_widget", widget.ConnectionBitrixWidget)
 	http.HandleFunc("/api/widget_data", widget.SendDataForWidgetForm)
 	http.HandleFunc("/api/form_data", widget.GetDataFromWidgetForm)
 
