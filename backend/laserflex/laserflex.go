@@ -16,8 +16,11 @@ type FileDetails struct {
 	DownloadURL string `json:"DOWNLOAD_URL"`
 }
 
-func downloadFile(downloadURL, fileName string) error {
-	// Создаём HTTP-запрос
+func downloadFile(downloadURL string, iteration int) error {
+	// Формируем имя файла
+	fileName := fmt.Sprintf("file_downloaded_xls%d.xlsx", iteration)
+
+	// Выполняем GET-запрос
 	resp, err := http.Get(downloadURL)
 	if err != nil {
 		return fmt.Errorf("failed to download file: %w", err)
@@ -45,6 +48,8 @@ func downloadFile(downloadURL, fileName string) error {
 	log.Printf("File saved as: %s\n", fileName)
 	return nil
 }
+
+var downloadCounter int
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	log.Println("Connection is starting...")
@@ -100,8 +105,9 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	// Логируем DOWNLOAD_URL
 	log.Printf("DOWNLOAD_URL: %s\n", fileDetails.DownloadURL)
 
-	// Скачиваем файл
-	err = downloadFile(fileDetails.DownloadURL, fileDetails.Name)
+	// Скачиваем файл с итерацией имени
+	downloadCounter++
+	err = downloadFile(fileDetails.DownloadURL, downloadCounter)
 	if err != nil {
 		log.Println("Error downloading file:", err)
 		http.Error(w, "Failed to download file", http.StatusInternalServerError)
@@ -110,7 +116,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	// Успешный ответ
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("File '%s' downloaded successfully.", fileDetails.Name)))
+	w.Write([]byte(fmt.Sprintf("File downloaded successfully as file_downloaded_xls%d.xlsx", downloadCounter)))
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
