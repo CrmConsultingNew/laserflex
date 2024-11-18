@@ -23,8 +23,6 @@ func Router() {
 
 	http.HandleFunc("/send_file", laserflex.LaserflexGetFile)
 
-	http.HandleFunc("/send_file", widget.ConnectionBitrixWidget)
-
 	http.HandleFunc("/api/connect_widget", widget.ConnectionBitrixWidget)
 
 	http.HandleFunc("/api/connect_widget", widget.ConnectionBitrixWidget)
