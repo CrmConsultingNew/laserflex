@@ -19,9 +19,9 @@ import (
 
 func Router() {
 
-	//http.HandleFunc("/api/new_connect", authorize.ConnectionBitrixLocalAppNew)
-
 	http.HandleFunc("/send_file", laserflex.LaserflexGetFile)
+
+	////////////////////////////////////////////////////////////////
 
 	http.HandleFunc("/api/connect_widget", widget.ConnectionBitrixWidget)
 
@@ -36,16 +36,8 @@ func Router() {
 
 	http.HandleFunc("/api/items", smart_processes.GetItemsByCompanyHandler)
 
-	//http.HandleFunc("/api/processes", bitrix_processes.ProcessesHandler)
-	//http.HandleFunc("/api/items", smart_processes.ItemListHandler)
-
-	//http.HandleFunc("/api/generate_docx", bitrix_processes.ProcessesHandler)
-	http.HandleFunc("/api/generate_docx", bitrix_processes.FileGeneratorHandler)
-
 	http.HandleFunc("/api/deals_get", deals.TransferDealsOnVue)
 	http.HandleFunc("/api/event_deal_add", events.OnCrmDealAddEvent)
-
-	//http.HandleFunc("/api/deals_gett", deals.TransferDealsOnVueMock)
 
 	http.HandleFunc("/api/documents/", docs.DocumentHandler)
 	http.HandleFunc("/api/comments/", comments.CommentsHandler)
