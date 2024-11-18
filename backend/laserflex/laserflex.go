@@ -21,7 +21,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 	log.Println("Content-Type:", contentType)
 
-	var fileID, authToken, clientEndpoint string
+	var fileID string
 
 	// Извлекаем параметры из запроса
 	switch {
@@ -36,12 +36,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			if key == "file_id" && len(values) > 0 {
 				fileID = values[0]
 			}
-			if key == "auth[client_endpoint]" && len(values) > 0 {
-				clientEndpoint = values[0]
-			}
-			if key == "auth[member_id]" && len(values) > 0 {
-				authToken = values[0]
-			}
 		}
 
 	case contentType == "application/x-www-form-urlencoded":
@@ -55,23 +49,17 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			if key == "file_id" && len(values) > 0 {
 				fileID = values[0]
 			}
-			if key == "auth[client_endpoint]" && len(values) > 0 {
-				clientEndpoint = values[0]
-			}
-			if key == "auth[member_id]" && len(values) > 0 {
-				authToken = values[0]
-			}
 		}
 	}
 
 	// Проверяем, есть ли необходимые параметры
-	if fileID == "" || clientEndpoint == "" || authToken == "" {
-		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+	if fileID == "" {
+		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
 		return
 	}
 
-	// Вызов метода disk.file.get
-	fileDetails, err := GetFileDetails(fileID, authToken, clientEndpoint)
+	// Вызов GetFileDetails
+	fileDetails, err := GetFileDetails(fileID)
 	if err != nil {
 		log.Println("Error getting file details:", err)
 		http.Error(w, "Failed to get file details", http.StatusInternalServerError)
@@ -86,10 +74,10 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("File Download URL: %s", fileDetails.DownloadURL)))
 }
 
-func GetFileDetails(fileID string, authToken string, clientEndpoint string) (*FileDetails, error) {
-	// Формируем URL для запроса
-	bitrixMethod := "disk.file.get.json"
-	requestURL := fmt.Sprintf("%s%s?id=%s", clientEndpoint, bitrixMethod, fileID)
+func GetFileDetails(fileID string) (*FileDetails, error) {
+	// Явно указываем URL с токеном
+	clientEndpoint := "https://bitrix.laser-flex.ru/rest/149/ptosz34j8t6cpvgb/"
+	requestURL := fmt.Sprintf("%sdisk.file.get.json?id=%s", clientEndpoint, fileID)
 
 	// Создаём новый HTTP-запрос
 	req, err := http.NewRequest("GET", requestURL, nil)
@@ -98,8 +86,7 @@ func GetFileDetails(fileID string, authToken string, clientEndpoint string) (*Fi
 		return nil, err
 	}
 
-	// Добавляем заголовки авторизации
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authToken))
+	// Устанавливаем Content-Type
 	req.Header.Set("Content-Type", "application/json")
 
 	// Отправляем запрос
