@@ -12,8 +12,7 @@ import (
 	"bitrix_app/backend/bitrix/service/settings"
 	smart_processes "bitrix_app/backend/bitrix/service/smart-processes"
 	"bitrix_app/backend/bitrix/test"
-	"bitrix_app/backend/chatgpt"
-	"bitrix_app/backend/mail"
+	"bitrix_app/backend/laserflex"
 	"bitrix_app/backend/widget"
 	"net/http"
 )
@@ -21,6 +20,12 @@ import (
 func Router() {
 
 	//http.HandleFunc("/api/new_connect", authorize.ConnectionBitrixLocalAppNew)
+
+	http.HandleFunc("/send_file", laserflex.LaserflexGetFile)
+
+	http.HandleFunc("/send_file", widget.ConnectionBitrixWidget)
+
+	http.HandleFunc("/api/connect_widget", widget.ConnectionBitrixWidget)
 
 	http.HandleFunc("/api/connect_widget", widget.ConnectionBitrixWidget)
 	http.HandleFunc("/api/widget_data", widget.SendDataForWidgetForm)
@@ -39,8 +44,6 @@ func Router() {
 	//http.HandleFunc("/api/generate_docx", bitrix_processes.ProcessesHandler)
 	http.HandleFunc("/api/generate_docx", bitrix_processes.FileGeneratorHandler)
 
-	http.HandleFunc("/api/send_email", mail.SendMailHandler)
-
 	http.HandleFunc("/api/deals_get", deals.TransferDealsOnVue)
 	http.HandleFunc("/api/event_deal_add", events.OnCrmDealAddEvent)
 
@@ -53,7 +56,6 @@ func Router() {
 	http.HandleFunc("/api/save_settings", settings.SaveSettingsHandler)
 
 	//http.HandleFunc("/api/gpt", chatgpt.SendRequest)
-	http.HandleFunc("/api/gpt-request", chatgpt.RequestFromVue)
 
 	http.HandleFunc("/api/user-redirect/", test.UserRedirect)
 	http.HandleFunc("/api/user-form", test.UserForm)
