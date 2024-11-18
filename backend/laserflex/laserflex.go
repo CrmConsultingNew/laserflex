@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -13,6 +14,36 @@ type FileDetails struct {
 	ID          string `json:"ID"`
 	Name        string `json:"NAME"`
 	DownloadURL string `json:"DOWNLOAD_URL"`
+}
+
+func downloadFile(downloadURL, fileName string) error {
+	// Создаём HTTP-запрос
+	resp, err := http.Get(downloadURL)
+	if err != nil {
+		return fmt.Errorf("failed to download file: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Проверяем статус ответа
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download file: status code %d", resp.StatusCode)
+	}
+
+	// Создаём файл для сохранения
+	file, err := os.Create(fileName)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+
+	// Сохраняем данные в файл
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	log.Printf("File saved as: %s\n", fileName)
+	return nil
 }
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +89,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Вызов GetFileDetails
+	// Вызов GetFileDetails для получения данных о файле
 	fileDetails, err := GetFileDetails(fileID)
 	if err != nil {
 		log.Println("Error getting file details:", err)
@@ -69,9 +100,17 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	// Логируем DOWNLOAD_URL
 	log.Printf("DOWNLOAD_URL: %s\n", fileDetails.DownloadURL)
 
-	// Отправляем ответ клиенту
+	// Скачиваем файл
+	err = downloadFile(fileDetails.DownloadURL, fileDetails.Name)
+	if err != nil {
+		log.Println("Error downloading file:", err)
+		http.Error(w, "Failed to download file", http.StatusInternalServerError)
+		return
+	}
+
+	// Успешный ответ
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("File Download URL: %s", fileDetails.DownloadURL)))
+	w.Write([]byte(fmt.Sprintf("File '%s' downloaded successfully.", fileDetails.Name)))
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
