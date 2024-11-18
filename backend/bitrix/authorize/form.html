@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Feedback Form</title>
+    <style>
+        body{background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;}.feedback-form-container{position: absolute;
+                                                left: 50%;
+                                                transform: translate(-50%, 0%);
+                                                width: 300px;
+                                                box-sizing: border-box;}.form-heading{text-align: center;
+                                                                            margin-bottom: 20px;}.form-field{margin-bottom: 20px;}.form-field label{display: block;
+                                                                                                                                      width: 100%;
+                                                                                                                                      color: white; /* Text color for labels */}.mandatory-note{color: red; /* Text color for the mandatory note */}.form-field select, .form-field textarea{display: block;
+                                                                                                                                                                                                                                                        width: 100%;
+                                                                                                                                                                                                                                                        color: white; /* Text color for textarea and select */
+                                                                                                                                                                                                                                                        background-color: #333; /* Slightly darker background for visibility */
+                                                                                                                                                                                                                                                        border: none;}#rating, .form-field input[type="submit"]{width: 300px; /* Set the width */
+                                                                                                                                                                                                                                                                          height: 40px; /* Set the height for rating and submit button */
+                                                                                                                                                                                                                                                                          color: white; /* Text color */
+                                                                                                                                                                                                                                                                          background-color: #333; /* Background color */
+                                                                                                                                                                                                                                                                          border: 1px solid #D3D3D3; /* Light gray border */}.form-field input[type="submit"]{padding: 0; /* Adjust padding to ensure height is consistent */
+                                                                                                                                                                                                                                                                                                                                 cursor: pointer;
+                                                                                                                                                                                                                                                                                                                                 background-color: #FFB500; /* Light orange background */}.form-field input[type="submit"]:hover{background-color: #FF7F50; /* Slightly darker orange on hover */}#comment{width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      height: 60px;}</style>
+</head>
+<body>
+
+<div class="feedback-form-container">
+    <h2 class="form-heading">Оцените Харизму</h2>
+    <form id="feedbackForm">
+        <div class="form-field">
+            <label id="for_rating" for="rating">Ваша оценка (1-10): *</label>
+            <select id="rating" name="rating" required>
+                <option value="0">Выберите вариант</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+            </select>
+            <div class="mandatory-note">оценка обязательна</div>
+        </div>
+        <div class="form-field">
+            <label for="comment">Что нам улучшить?</label>
+            <textarea id="comment" name="comment"></textarea>
+        </div>
+        <div class="form-field">
+            <input type="submit" value="Send">
+        </div>
+    </form>
+</div>
+
+<script>
+    document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+        e.preventDefault(); // Prevent the default form submission behavior
+
+        const rating = document.getElementById('rating').value;
+        const comment = document.getElementById('comment').value;
+
+        // Constructing the feedback data object
+        const feedbackData = {
+            rating: rating,
+            comment: comment
+        };
+
+        console.log(feedbackData); // Log the data to the console for debugging
+
+        // Sending the data to the server using fetch
+        fetch('https://b24app.rwp2.com/api/user-form', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(feedbackData)
+        })
+            /*.then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not OK');
+                }
+                return response.json(); // Assuming the server responds with JSON.
+            })
+            .then(data => {
+                console.log('Success:', data);
+                alert('Feedback submitted successfully');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to submit feedback');
+            });*/
+
+    });
+
+</script>
+
+</body>
+</html>
