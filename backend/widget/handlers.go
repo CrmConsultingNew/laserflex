@@ -3,9 +3,7 @@ package widget
 import (
 	"bitrix_app/backend/bitrix/service/companies"
 	"bitrix_app/backend/bitrix/service/deals"
-	"bitrix_app/backend/chatgpt"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -34,35 +32,6 @@ func GetDataFromWidgetForm(w http.ResponseWriter, r *http.Request) {
 		log.Println("Ошибка при парсинге данных формы:", err)
 		return
 	}
-
-	// Формируем запрос для ChatGPT
-	question := fmt.Sprintf(
-		"Проверь эти данные и составь коммерческое предложение для клиента на основе собранных данных: %v",
-		formData,
-	)
-
-	// Получение ChatGPT клиента (предполагается, что клиент уже настроен в main)
-	proxyClient, err := chatgpt.CreateProxyClient()
-	if err != nil {
-		log.Println("Ошибка создания HTTP клиента с прокси:", err)
-		http.Error(w, "Failed to create proxy client", http.StatusInternalServerError)
-		return
-	}
-
-	// Отправляем запрос в ChatGPT
-	answer, err := chatgpt.SendMessageToHuggingFace(proxyClient, question)
-	if err != nil {
-		log.Println("Ошибка при запросе к HuggingFace:", err)
-		http.Error(w, "Failed to send request to HuggingFace", http.StatusInternalServerError)
-		return
-	}
-
-	// Логируем ответ от ChatGPT
-	log.Println("Ответ от HuggingFace:", answer)
-
-	// Выводим ответ в HTTP Response (опционально)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Ответ от HuggingFace: " + answer))
 
 	// Получение списка компаний
 	list, err := companies.GetAllCompaniesList(GlobalAuthIdWidget)
