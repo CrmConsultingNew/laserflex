@@ -20,6 +20,8 @@ import (
 func Router() {
 
 	http.HandleFunc("/send_file", laserflex.LaserflexGetFile)
+	http.HandleFunc("/files", laserflex.ListFilesHandler)        // Страница со списком файлов
+	http.HandleFunc("/download/", laserflex.DownloadFileHandler) // Скачивание файла
 
 	////////////////////////////////////////////////////////////////
 
