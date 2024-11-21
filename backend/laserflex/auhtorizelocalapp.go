@@ -1,54 +1,71 @@
 package laserflex
 
 import (
-	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 )
+
+type Request struct {
+	AuthID           string `json:"auth_id"`
+	AuthExpires      int    `json:"auth_expires"`
+	RefreshID        string `json:"refresh_id"`
+	MemberID         string `json:"member_id"`
+	Status           string `json:"status"`
+	Placement        string `json:"placement"`
+	PlacementOptions string `json:"placement_options"`
+}
 
 var BlobalAuthIdLaserflex string
 
 func AuthorizeEndpoint(w http.ResponseWriter, r *http.Request) {
 	log.Println("Connection is starting...")
-
-	// Чтение тела запроса
 	bs, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println("error reading request body:", err)
 		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
 	}
+	log.Println("resp_at_first:", string(bs))
 	defer r.Body.Close()
 
-	log.Println("FULL REQUEST CONNECTION: ", string(bs))
-	// Разбор строки запроса
-	queryParams, err := url.ParseQuery(string(bs))
+	authValues := ParseValuesLaserflex(w, bs) //todo here we must to add this data in dbase?
+	fmt.Printf("authValues.AuthID : %s, authValues.MemberID: %s", authValues.AuthID, authValues.MemberID)
+
+	//w.Write([]byte(authValues.AuthID))
+	redirectURL := "https://crmconsulting-api.ru/"
+
+	// Use http.Redirect to redirect the client
+	// The http.StatusFound status code is commonly used for redirects
+	http.Redirect(w, r, redirectURL, http.StatusFound)
+
+	fmt.Println("redirect is done...")
+	BlobalAuthIdLaserflex = authValues.AuthID
+}
+
+func ParseValuesLaserflex(w http.ResponseWriter, bs []byte) Request {
+	values, err := url.ParseQuery(string(bs))
 	if err != nil {
-		log.Printf("Error parsing query: %v", err)
-		http.Error(w, "Error parsing query", http.StatusBadRequest)
-		return
+		log.Println("error parsing query:", err)
+		http.Error(w, "Bad request", http.StatusBadRequest)
 	}
 
-	// Получение и раскодирование параметра PLACEMENT_OPTIONS
-	placementOptionsEncoded := queryParams.Get("PLACEMENT_OPTIONS")
-	BlobalAuthIdLaserflex = queryParams.Get("AUTH_ID")
-	log.Println("GlobalAuthIdWidget: ", BlobalAuthIdLaserflex)
-	placementOptionsDecoded, err := url.QueryUnescape(placementOptionsEncoded)
+	authExpires, err := strconv.Atoi(values.Get("AUTH_EXPIRES"))
 	if err != nil {
-		log.Printf("Error decoding PLACEMENT_OPTIONS: %v", err)
-		http.Error(w, "Error decoding placement options", http.StatusBadRequest)
-		return
-	}
-	log.Println("Decoded PLACEMENT_OPTIONS:", placementOptionsDecoded)
-
-	// Парсинг JSON и извлечение поля ID
-	var placementOptions map[string]interface{}
-	if err := json.Unmarshal([]byte(placementOptionsDecoded), &placementOptions); err != nil {
-		log.Printf("Error unmarshaling PLACEMENT_OPTIONS JSON: %v", err)
-		http.Error(w, "Error unmarshaling placement options", http.StatusBadRequest)
-		return
+		log.Println("error converting AUTH_EXPIRES to int:", err)
+		http.Error(w, "Bad request", http.StatusBadRequest)
 	}
 
+	authValues := Request{
+		AuthID:           values.Get("AUTH_ID"),
+		AuthExpires:      authExpires,
+		RefreshID:        values.Get("REFRESH_ID"),
+		MemberID:         values.Get("member_id"),
+		Status:           values.Get("status"),
+		Placement:        values.Get("PLACEMENT"),
+		PlacementOptions: values.Get("PLACEMENT_OPTIONS"),
+	}
+	return authValues
 }
