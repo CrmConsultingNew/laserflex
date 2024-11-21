@@ -134,6 +134,12 @@ func RefreshToken() error {
 		return fmt.Errorf("failed to decode refresh token response: %w", err)
 	}
 
+	// Проверяем, получили ли мы токены
+	if response.AccessToken == "" || response.RefreshToken == "" {
+		log.Println("Received empty tokens from Bitrix24")
+		return fmt.Errorf("received empty tokens from Bitrix24")
+	}
+
 	// Обновляем глобальные значения
 	GlobalAuthID = response.AccessToken
 	GlobalRefreshID = response.RefreshToken
