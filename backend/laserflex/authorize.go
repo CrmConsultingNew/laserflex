@@ -12,8 +12,6 @@ import (
 	"time"
 )
 
-var GlobalAuthIdLaserflex string
-
 type Request struct {
 	AuthID           string
 	AuthExpires      int
