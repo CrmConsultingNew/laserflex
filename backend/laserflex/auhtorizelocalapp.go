@@ -1,6 +1,9 @@
 package laserflex
 
 import (
+	"bitrix_app/backend/bitrix/endpoints"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -35,7 +38,7 @@ func AuthorizeEndpoint(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("authValues.AuthID : %s, authValues.MemberID: %s", authValues.AuthID, authValues.MemberID)
 
 	//w.Write([]byte(authValues.AuthID))
-	redirectURL := "https://crmconsulting-api.ru/"
+	redirectURL := "https://bitrix.laser-flex.ru/marketplace/app/25/"
 
 	// Use http.Redirect to redirect the client
 	// The http.StatusFound status code is commonly used for redirects
@@ -68,4 +71,80 @@ func ParseValuesLaserflex(w http.ResponseWriter, bs []byte) Request {
 		PlacementOptions: values.Get("PLACEMENT_OPTIONS"),
 	}
 	return authValues
+}
+
+func GetAllCompaniesList(authKey string) ([]Company, error) {
+	bitrixMethod := "crm.company.list"
+	allCompanies := []Company{}
+	start := 0
+
+	for {
+		requestURL := fmt.Sprintf("%s/rest/%s?auth=%s", endpoints.BitrixDomain, bitrixMethod, authKey)
+
+		// Prepare request body with pagination
+		requestBody := map[string]interface{}{
+			"start": start, // Начало выборки
+		}
+
+		// Marshal the request body into JSON
+		jsonData, err := json.Marshal(requestBody)
+		if err != nil {
+			log.Println("Error marshaling request body:", err)
+			return nil, err
+		}
+
+		// Create a new request with JSON body
+		req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			log.Println("Error creating new request:", err)
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+
+		// Send the request
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Println("Error sending request:", err)
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		// Read and parse the response body
+		responseData, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Println("Error reading response body:", err)
+			return nil, err
+		}
+
+		// Log the raw response for debugging
+		//log.Println("GetCompaniesList Response:", string(responseData))
+
+		// Parse the response into a slice of companies
+		var response struct {
+			Result []Company `json:"result"`
+			Next   int       `json:"next"`
+		}
+		if err := json.Unmarshal(responseData, &response); err != nil {
+			log.Println("Error unmarshaling response:", err)
+			return nil, err
+		}
+
+		allCompanies = append(allCompanies, response.Result...)
+
+		// Если поле next пустое или равно 0, завершить цикл
+		if response.Next == 0 {
+			break
+		}
+
+		start = response.Next
+	}
+
+	return allCompanies, nil
+}
+
+type Company struct {
+	ID       string `json:"ID"`
+	Title    string `json:"TITLE"`
+	HasEmail string `json:"HAS_EMAIL"`
 }
