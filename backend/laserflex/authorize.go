@@ -27,7 +27,7 @@ var (
 	GlobalRefreshID string
 	GlobalMemberID  string
 	AuthExpiryTime  time.Time
-	UpdateInterval  = 5 * time.Minute // Обновление каждые 50 минут
+	UpdateInterval  = 30 * time.Second // Обновление каждые 50 минут
 	ClientID        = "local.671aad770da2d1.64572237"
 	ClientSecret    = "qWQFm8UJThmJQNl6BfzVjhgfhlCFALKSG586NBD1zjDcdn8ISG"
 	OAuthURL        = "https://oauth.bitrix.info/oauth/token/"
