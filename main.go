@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func ReadXls(filename string) {
+func ReadXlsProducts(filename string) {
 	f, err := excelize.OpenFile(filename)
 	if err != nil {
 		fmt.Println(err)
@@ -26,7 +26,7 @@ func ReadXls(filename string) {
 		}
 	}()
 	// Get value from cell by given worksheet name and cell reference.
-	cell, err := f.GetCellValue("КП", "B2")
+	cell, err := f.GetCellValue("Статистика", "A2")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -48,7 +48,7 @@ func ReadXls(filename string) {
 
 func main() {
 
-	//ReadXls("file_downloaded_xls1.xlsx")
+	//ReadXlsProducts("file_downloaded_xls1.xlsx")
 	//return
 
 	fmt.Println("service starting...")

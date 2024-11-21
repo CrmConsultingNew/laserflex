@@ -4,7 +4,13 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4777308f-843b-41bb-9def-5ab1b57ee989" name="Changes" comment="" />
+    <list default="true" id="4777308f-843b-41bb-9def-5ab1b57ee989" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/backend/laserflex/authorize.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/laserflex/auhtorizelocalapp.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/laserflex/laserflex.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/laserflex/laserflex.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -73,6 +79,7 @@
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="E:\Projects\Laserflex" />
       <recent name="E:\Projects\bitrixChatgpt\frontend\vite-project\public\images" />
       <recent name="E:\Projects\bitrixChatgpt" />
     </key>

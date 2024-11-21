@@ -104,6 +104,8 @@ func downloadFile(downloadURL string, iteration int) error {
 
 var downloadCounter int
 
+// Сюда нам прилетает файл из Битрикс24
+
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	log.Println("Connection is starting...")
 
