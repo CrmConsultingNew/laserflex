@@ -92,6 +92,12 @@ func ParseValuesLaserflex(w http.ResponseWriter, bs []byte) Request {
 }
 
 func RefreshToken() error {
+	// Проверяем, есть ли refresh_token
+	if GlobalRefreshID == "" {
+		log.Println("RefreshToken is empty")
+		return fmt.Errorf("refresh_token is empty")
+	}
+
 	// Формируем тело запроса
 	requestBody, err := json.Marshal(map[string]string{
 		"grant_type":    "refresh_token",
@@ -110,19 +116,23 @@ func RefreshToken() error {
 	}
 	defer resp.Body.Close()
 
+	// Логирование ответа
+	responseBody, _ := io.ReadAll(resp.Body)
+	log.Printf("RefreshToken Response: %s", string(responseBody))
+
 	// Проверяем статус ответа
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to refresh token, status: %d, body: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("failed to refresh token, status: %d, body: %s", resp.StatusCode, string(responseBody))
 	}
 
-	// Читаем ответ
+	// Читаем и парсим ответ
 	var response struct {
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
 		ExpiresIn    int    `json:"expires_in"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	if err := json.Unmarshal(responseBody, &response); err != nil {
+		log.Println("Error unmarshaling response:", err)
 		return fmt.Errorf("failed to decode refresh token response: %w", err)
 	}
 
