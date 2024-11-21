@@ -96,6 +96,13 @@ func RefreshToken() error {
 		return fmt.Errorf("refresh_token is empty")
 	}
 
+	// Формируем URL для обновления токена
+	serverEndpoint := "https://oauth.bitrix.info/oauth/token/" // Убедитесь, что это корректный URL
+	if serverEndpoint == "" {
+		log.Println("Server endpoint is empty")
+		return fmt.Errorf("server endpoint is empty")
+	}
+
 	// Формируем тело запроса
 	requestBody, err := json.Marshal(map[string]string{
 		"grant_type":    "refresh_token",
@@ -108,7 +115,7 @@ func RefreshToken() error {
 	}
 
 	// Выполняем запрос на обновление токена
-	resp, err := http.Post(OAuthURL, "application/json", bytes.NewBuffer(requestBody))
+	resp, err := http.Post(serverEndpoint, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
 		return fmt.Errorf("failed to send refresh token request: %w", err)
 	}
