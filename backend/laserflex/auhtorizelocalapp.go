@@ -38,13 +38,13 @@ func AuthorizeEndpoint(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("authValues.AuthID : %s, authValues.MemberID: %s", authValues.AuthID, authValues.MemberID)
 
 	//w.Write([]byte(authValues.AuthID))
-	redirectURL := "https://bitrix.laser-flex.ru/marketplace/app/25/"
+	//redirectURL := "https://bitrix.laser-flex.ru/marketplace/app/25/"
 
 	// Use http.Redirect to redirect the client
 	// The http.StatusFound status code is commonly used for redirects
-	http.Redirect(w, r, redirectURL, http.StatusFound)
+	//http.Redirect(w, r, redirectURL, http.StatusFound)
 
-	fmt.Println("redirect is done...")
+	//fmt.Println("redirect is done...")
 	BlobalAuthIdLaserflex = authValues.AuthID
 }
 
