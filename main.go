@@ -48,8 +48,8 @@ func ReadXlsProducts(filename string) {
 
 func main() {
 
-	ReadXlsProducts("file_downloaded_xls1.xlsx")
-	return
+	/*ReadXlsProducts("file_downloaded_xls1.xlsx")
+	return*/
 
 	fmt.Println("service starting...")
 
