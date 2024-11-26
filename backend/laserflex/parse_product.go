@@ -27,19 +27,37 @@ type Product struct {
 
 // Функция для конверсии строки с запятой в float64
 func parseLocalizedFloat(s string) float64 {
-	// Удаляем пробелы только между цифрами
+	fmt.Printf("Original input: '%s'\n", s)
+	// Удаление пробелов между цифрами
 	re := regexp.MustCompile(`(\d)\s+(\d)`)
 	s = re.ReplaceAllString(s, "$1$2")
+	fmt.Printf("After removing spaces: '%s'\n", s)
 
-	// Заменяем запятую на точку
+	// Проверка на пустую строку
+	if s == "" {
+		fmt.Println("String is empty, returning 0")
+		return 0
+	}
+
+	// Удаление лишних точек
+	if strings.Count(s, ".") > 1 {
+		parts := strings.Split(s, ".")
+		s = strings.Join(parts[:len(parts)-1], "") + "." + parts[len(parts)-1]
+		fmt.Printf("After fixing dots: '%s'\n", s)
+	}
+
+	// Замена запятой на точку
 	s = strings.ReplaceAll(s, ",", ".")
+	fmt.Printf("After replacing commas: '%s'\n", s)
 
-	// Парсим строку в float64
+	// Преобразование в float64
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		fmt.Printf("Warning: unable to parse float from string '%s': %v\n", s, err)
-		return 0 // Возвращаем 0, если конвертация не удалась
+		fmt.Printf("Error parsing float: %v\n", err)
+		return 0
 	}
+
+	fmt.Printf("Parsed float: %f\n", v)
 	return v
 }
 
