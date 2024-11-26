@@ -138,7 +138,7 @@ func GetFileDetails(fileID string) (*FileDetails, error) {
 }
 
 func AddProductsRowToDeal(name string, currency string, price float64, sort int, authID string) error {
-	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/ycz7102vaerygxvb/"
+	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "crm.deal.productrows.set"
 
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)

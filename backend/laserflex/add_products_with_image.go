@@ -22,6 +22,7 @@ func AddProductsWithImage(product Product, sectionID string) (int, error) {
 	requestBody := map[string]interface{}{
 		"fields": map[string]interface{}{
 			"NAME":       product.Name,
+			"PRICE":      product.Price,
 			"SECTION_ID": sectionID,
 			"PROPERTY_197": []map[string]interface{}{
 				{
