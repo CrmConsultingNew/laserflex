@@ -1,91 +1,53 @@
 package laserflex
 
 import (
-	"fmt"
 	"github.com/xuri/excelize/v2"
-	"strings"
+	"log"
 )
 
-func ParseFile() {
-	filePath := "КП тест.xlsx"
-	f, err := excelize.OpenFile(filePath)
+func ReadXlsProducts(filename string) map[string][]string {
+	f, err := excelize.OpenFile(filename)
 	if err != nil {
-		fmt.Printf("Ошибка открытия файла: %s\n", err)
-		return
+		log.Println("Error opening file:", err)
+		return nil
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Println("Error closing file:", err)
+		}
+	}()
+
+	// Для хранения данных, где ключ — значение из первой ячейки строки
+	data := make(map[string][]string)
+
+	// Получаем все строки из листа "КП"
+	rows, err := f.GetRows("КП")
+	if err != nil {
+		log.Println("Error getting rows:", err)
+		return nil
 	}
 
-	// Указываем лист и искомое значение
-	sheetName := f.GetSheetName(1)
-	searchValue := "Заголовок таблицы" // Здесь заменить на искомое значение
+	// Перебираем строки
+	for rowIndex, row := range rows {
+		// Пропускаем первую строку (например, заголовки)
+		if rowIndex == 0 {
+			continue
+		}
 
-	// Находим ячейку с искомым значением
-	startRow, startCol, err := findCell(f, sheetName, searchValue)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Printf("Найдено значение '%s' в ячейке [%d, %d]\n", searchValue, startRow+1, startCol+1)
+		// Если строка пустая, пропускаем её
+		if len(row) == 0 {
+			continue
+		}
 
-	// Определяем границы подтаблицы
-	rangeStr, err := detectSubtable(f, sheetName, startRow, startCol)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Printf("Диапазон подтаблицы: %s\n", rangeStr)
-}
-
-func findCell(f *excelize.File, sheetName string, searchValue string) (int, int, error) {
-	rows, err := f.GetRows(sheetName)
-	if err != nil {
-		return -1, -1, err
-	}
-
-	for r, row := range rows {
-		for c, cell := range row {
-			if strings.TrimSpace(cell) == searchValue {
-				return r, c, nil
-			}
+		// Первый элемент строки становится ключом
+		key := row[0]
+		// Остальные элементы добавляются в значение
+		if len(row) > 1 {
+			data[key] = row[1:]
+		} else {
+			data[key] = []string{}
 		}
 	}
 
-	return -1, -1, fmt.Errorf("значение '%s' не найдено", searchValue)
-}
-
-// Определение границ подтаблицы
-func detectSubtable(f *excelize.File, sheetName string, startRow, startCol int) (string, error) {
-	rows, err := f.GetRows(sheetName)
-	if err != nil {
-		return "", err
-	}
-
-	// Определяем конец по горизонтали (строка)
-	endCol := startCol
-	for col := startCol; col < len(rows[startRow]); col++ {
-		if strings.TrimSpace(rows[startRow][col]) == "" {
-			break
-		}
-		endCol = col
-	}
-
-	// Определяем конец по вертикали (столбец)
-	endRow := startRow
-	for row := startRow; row < len(rows); row++ {
-		empty := true
-		for col := startCol; col <= endCol; col++ {
-			if strings.TrimSpace(rows[row][col]) != "" {
-				empty = false
-				break
-			}
-		}
-		if empty {
-			break
-		}
-		endRow = row
-	}
-
-	// Формируем диапазон подтаблицы
-	startCell, _ := excelize.CoordinatesToCellName(startCol+1, startRow+1)
-	endCell, _ := excelize.CoordinatesToCellName(endCol+1, endRow+1)
-	return fmt.Sprintf("%s:%s", startCell, endCell), nil
+	return data
 }

@@ -27,10 +27,10 @@ var (
 	GlobalRefreshID string
 	GlobalMemberID  string
 	AuthExpiryTime  time.Time
-	UpdateInterval  = 30 * time.Second // Обновление каждые 50 минут
-	ClientID        = "local.671aad770da2d1.64572237"
-	ClientSecret    = "qWQFm8UJThmJQNl6BfzVjhgfhlCFALKSG586NBD1zjDcdn8ISG"
-	OAuthURL        = "https://oauth.bitrix.info/oauth/token/"
+	//UpdateInterval  = 30 * time.Second // Обновление каждые 50 минут
+	ClientID     = "local.671aad770da2d1.64572237"
+	ClientSecret = "qWQFm8UJThmJQNl6BfzVjhgfhlCFALKSG586NBD1zjDcdn8ISG"
+	OAuthURL     = "https://oauth.bitrix.info/oauth/token/"
 )
 
 func AuthorizeEndpoint(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +58,7 @@ func AuthorizeEndpoint(w http.ResponseWriter, r *http.Request) {
 	AuthExpiryTime = time.Now().Add(time.Duration(authValues.AuthExpires) * time.Second)
 
 	// Запускаем автоматическое обновление токена
-	go StartTokenRefresh()
+	//go StartTokenRefresh()
 
 	log.Printf("Authorization successful: AuthID=%s, RefreshID=%s, MemberID=%s", GlobalAuthID, GlobalRefreshID, GlobalMemberID)
 }
@@ -156,7 +156,7 @@ func RefreshToken() error {
 	return nil
 }
 
-func StartTokenRefresh() {
+/*func StartTokenRefresh() {
 	ticker := time.NewTicker(UpdateInterval)
 	defer ticker.Stop()
 
@@ -165,4 +165,4 @@ func StartTokenRefresh() {
 			log.Println("Error refreshing token:", err)
 		}
 	}
-}
+}*/
