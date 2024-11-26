@@ -132,7 +132,7 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			PipeCutting: parseLocalizedFloat(cells[15]),
 		}
 
-		fmt.Printf("Parsed Product: %+v\n", product)
+		fmt.Printf("Parsed Product Price: %+v\n", product.Price)
 
 		products = append(products, product)
 	}
