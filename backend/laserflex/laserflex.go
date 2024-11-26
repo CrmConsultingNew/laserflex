@@ -85,12 +85,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		quantities = append(quantities, product.Quantity)
 	}
 
-	err = AddProductsRowToDeal(dealID, productIDs, quantities)
+	/*err = AddProductsRowToDeal(dealID, productIDs, quantities)
 	if err != nil {
 		log.Printf("Error adding product rows to deal: %v", err)
 		http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
 		return
-	}
+	}*/
 
 	log.Printf("Product rows added to deal %s successfully", dealID)
 
