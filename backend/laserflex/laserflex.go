@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -16,6 +17,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	log.Println("Content-Type:", contentType)
 
 	var fileID, dealID, smartProcessID string
+	var assignedById int
 
 	// Извлекаем параметры из URL
 	queryParams := r.URL.Query()
@@ -24,6 +26,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	dealID = queryParams.Get("deal_id")
 	smartProcessID = queryParams.Get("smartProcessID")
 	fileID = queryParams.Get("file_id")
+	assignedByIdStr := queryParams.Get("assignedById")
 
 	if dealID != "" {
 		log.Printf("Extracted deal_id: %s\n", dealID)
@@ -36,6 +39,18 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	if fileID == "" {
 		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
 		return
+	}
+
+	// Преобразование assignedById в int
+	if assignedByIdStr != "" {
+		var err error
+		assignedById, err = strconv.Atoi(assignedByIdStr)
+		if err != nil {
+			log.Printf("Error converting assignedById to int: %v\n", err)
+			http.Error(w, "Invalid assignedById parameter", http.StatusBadRequest)
+			return
+		}
+		log.Printf("Extracted assignedById: %d\n", assignedById)
 	}
 
 	// Вызов GetFileDetails для получения данных о файле
@@ -68,6 +83,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	// Создаем массив для хранения ID товаров
 	var productIDs []int
+	var totalProductsPrice float64
 
 	// Добавление продуктов в Bitrix24
 	for _, product := range products {
@@ -77,6 +93,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		productIDs = append(productIDs, productID)
+		totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
 	}
 
 	// После получения productIDs и products
@@ -85,17 +102,23 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		quantities = append(quantities, product.Quantity)
 	}
 
-	/*err = AddProductsRowToDeal(dealID, productIDs, quantities)
+	// Добавление товаров в сделку
+	err = AddProductsRowToDeal(dealID, productIDs, quantities)
 	if err != nil {
 		log.Printf("Error adding product rows to deal: %v", err)
 		http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
 		return
-	}*/
+	}
 
-	log.Printf("Product rows added to deal %s successfully", dealID)
+	// Добавление документа в Bitrix24
+	err = AddCatalogDocument(dealID, assignedById, totalProductsPrice)
+	if err != nil {
+		log.Printf("Error adding catalog document: %v", err)
+		http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
+		return
+	}
 
-	log.Printf("Processed products: %+v\n", products)
-	log.Printf("Added Product IDs: %+v\n", productIDs)
+	log.Printf("Product rows and catalog document added successfully for deal %s", dealID)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File processed and products added successfully"))

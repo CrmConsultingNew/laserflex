@@ -67,11 +67,11 @@ func parseFloatOrInt(input string) float64 {
 	// Убираем пробелы между цифрами
 	re := regexp.MustCompile(`(\d)\s+(\d)`)
 	input = re.ReplaceAllString(input, "$1$2")
-	fmt.Printf("After removing spaces: '%s'\n", input)
+	//fmt.Printf("After removing spaces: '%s'\n", input)
 
 	// Заменяем запятую на точку
 	input = strings.ReplaceAll(input, ",", ".")
-	fmt.Printf("After replacing commas: '%s'\n", input)
+	//fmt.Printf("After replacing commas: '%s'\n", input)
 
 	// Пробуем преобразовать в float64
 	value, err := strconv.ParseFloat(input, 64)
@@ -80,7 +80,7 @@ func parseFloatOrInt(input string) float64 {
 		return 0
 	}
 
-	fmt.Printf("Parsed float: %f\n", value)
+	//fmt.Printf("Parsed float: %f\n", value)
 	return value
 }
 
