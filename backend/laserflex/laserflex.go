@@ -58,6 +58,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Чтение продуктов из Excel файла
 	products, err := ReadXlsProductRows(fileName)
 	if err != nil {
 		log.Println("Error reading Excel file:", err)
@@ -65,9 +66,24 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Создаем массив для хранения ID товаров
+	var productIDs []int
+
+	// Добавление продуктов в Bitrix24
+	for _, product := range products {
+		productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
+		if err != nil {
+			log.Printf("Error adding product %s: %v", product.Name, err)
+			continue
+		}
+		productIDs = append(productIDs, productID)
+	}
+
 	log.Printf("Processed products: %+v\n", products)
+	log.Printf("Added Product IDs: %+v\n", productIDs)
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("File processed successfully"))
+	w.Write([]byte("File processed and products added successfully"))
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
