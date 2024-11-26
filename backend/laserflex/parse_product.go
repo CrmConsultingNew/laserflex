@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/xuri/excelize/v2"
 	"strconv"
+	"strings"
 )
 
 type Product struct {
@@ -23,7 +24,14 @@ type Product struct {
 	PipeCutting float64 // Труборез (столбец P)
 }
 
-// ReadXlsProductRows читает строки из Excel файла и возвращает массив структур Product
+// Функция для конверсии строки с запятой в float64
+func parseLocalizedFloat(s string) float64 {
+	s = strings.ReplaceAll(s, ",", ".") // Заменяем запятую на точку
+	v, _ := strconv.ParseFloat(s, 64)   // Конвертируем в float64
+	return v
+}
+
+// Функция для чтения строк из Excel
 func ReadXlsProductRows(filename string) ([]Product, error) {
 	fmt.Println("Processing Excel file...")
 
@@ -39,12 +47,6 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 	}
 
 	var products []Product
-
-	// Преобразование строки в float64
-	parseFloat := func(s string) float64 {
-		v, _ := strconv.ParseFloat(s, 64)
-		return v
-	}
 
 	// Преобразование строки в int
 	parseInt := func(s string) int {
@@ -73,29 +75,29 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 		}
 
 		// Суммируем для Production
-		production := parseFloat(cells[7]) + // H
-			parseFloat(cells[9]) + // J
-			parseFloat(cells[10]) + // K
-			parseFloat(cells[11]) + // L
-			parseFloat(cells[12]) + // M
-			parseFloat(cells[13]) + // N
-			parseFloat(cells[14]) // O
+		production := parseLocalizedFloat(cells[7]) + // H
+			parseLocalizedFloat(cells[9]) + // J
+			parseLocalizedFloat(cells[10]) + // K
+			parseLocalizedFloat(cells[11]) + // L
+			parseLocalizedFloat(cells[12]) + // M
+			parseLocalizedFloat(cells[13]) + // N
+			parseLocalizedFloat(cells[14]) // O
 
 		// Создаём объект Product
 		product := Product{
 			Name:        cells[0],
-			Quantity:    parseFloat(cells[1]),
-			Price:       parseFloat(cells[2]),
+			Quantity:    parseLocalizedFloat(cells[1]),
+			Price:       parseLocalizedFloat(cells[2]),
 			ImageBase64: imageBase64,
-			Material:    parseFloat(cells[4]),
-			Laser:       parseFloat(cells[5]),
+			Material:    parseLocalizedFloat(cells[4]),
+			Laser:       parseLocalizedFloat(cells[5]),
 			Bend:        parseInt(cells[6]),
 			Weld:        parseInt(cells[7]),
 			Paint:       parseInt(cells[8]),
 			Production:  production,
-			AddP:        parseFloat(cells[13]),
-			AddL:        parseFloat(cells[14]),
-			PipeCutting: parseFloat(cells[15]),
+			AddP:        parseLocalizedFloat(cells[13]),
+			AddL:        parseLocalizedFloat(cells[14]),
+			PipeCutting: parseLocalizedFloat(cells[15]),
 		}
 
 		products = append(products, product)

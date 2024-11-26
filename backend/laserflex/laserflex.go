@@ -79,6 +79,21 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		productIDs = append(productIDs, productID)
 	}
 
+	// После получения productIDs и products
+	var quantities []float64
+	for _, product := range products {
+		quantities = append(quantities, product.Quantity)
+	}
+
+	err = AddProductsRowToDeal(dealID, productIDs, quantities)
+	if err != nil {
+		log.Printf("Error adding product rows to deal: %v", err)
+		http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Product rows added to deal %s successfully", dealID)
+
 	log.Printf("Processed products: %+v\n", products)
 	log.Printf("Added Product IDs: %+v\n", productIDs)
 
@@ -137,52 +152,57 @@ func GetFileDetails(fileID string) (*FileDetails, error) {
 	return &response.Result, nil
 }
 
-func AddProductsRowToDeal(name string, currency string, price float64, sort int, authID string) error {
+func AddProductsRowToDeal(dealID string, productIDs []int, quantities []float64) error {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "crm.deal.productrows.set"
 
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
 
+	// Создаем массив строк для отправки
+	var rows []map[string]interface{}
+	for i, productID := range productIDs {
+		rows = append(rows, map[string]interface{}{
+			"PRODUCT_ID": productID,
+			"QUANTITY":   quantities[i],
+		})
+	}
+
 	requestBody := map[string]interface{}{
-		"fields": map[string]interface{}{
-			"NAME":        name,
-			"CURRENCY_ID": currency,
-			"PRICE":       price,
-			"SORT":        sort,
-		},
+		"id":   dealID,
+		"rows": rows,
 	}
 
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshalling request body: %v", err)
 	}
 
 	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("error sending HTTP request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading response body: %v", err)
 	}
 
 	var response map[string]interface{}
 	if err := json.Unmarshal(responseData, &response); err != nil {
-		return err
+		return fmt.Errorf("error unmarshalling response: %v", err)
 	}
 
 	if _, ok := response["error"]; ok {
 		return fmt.Errorf("Ошибка: %s", response["error_description"])
 	}
 
-	log.Println("Товар добавлен с ID:", response["result"])
+	log.Println("Товарные строки добавлены в сделку:", dealID)
 	return nil
 }
