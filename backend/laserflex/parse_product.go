@@ -26,8 +26,14 @@ type Product struct {
 
 // Функция для конверсии строки с запятой в float64
 func parseLocalizedFloat(s string) float64 {
-	s = strings.ReplaceAll(s, ",", ".") // Заменяем запятую на точку
-	v, _ := strconv.ParseFloat(s, 64)   // Конвертируем в float64
+	// Удаляем пробелы и заменяем запятую на точку
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, ",", ".")
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		fmt.Printf("Warning: unable to parse float from string '%s': %v\n", s, err)
+		return 0 // Возвращаем 0, если конвертация не удалась
+	}
 	return v
 }
 
@@ -65,6 +71,9 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			break
 		}
 
+		// Логируем данные строки
+		fmt.Printf("Row %d: %+v\n", i+1, cells)
+
 		// Получение Base64 строки изображения из ячейки
 		imageBase64 := ""
 		imageData, err := getImageBase64FromExcel(f, "Статистика", fmt.Sprintf("D%d", i+1))
@@ -99,6 +108,8 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			AddL:        parseLocalizedFloat(cells[14]),
 			PipeCutting: parseLocalizedFloat(cells[15]),
 		}
+
+		fmt.Printf("Parsed Product: %+v\n", product)
 
 		products = append(products, product)
 	}
