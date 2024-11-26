@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/xuri/excelize/v2"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -26,10 +27,11 @@ type Product struct {
 
 // Функция для конверсии строки с запятой в float64
 func parseLocalizedFloat(s string) float64 {
-	// Удаляем пробелы в числах (например, "2 974,67" -> "2974,67")
-	s = strings.ReplaceAll(s, " ", "")
+	// Удаляем пробелы только между цифрами
+	re := regexp.MustCompile(`(\d)\s+(\d)`)
+	s = re.ReplaceAllString(s, "$1$2")
 
-	// Заменяем запятую на точку (например, "2974,67" -> "2974.67")
+	// Заменяем запятую на точку
 	s = strings.ReplaceAll(s, ",", ".")
 
 	// Парсим строку в float64
@@ -38,7 +40,6 @@ func parseLocalizedFloat(s string) float64 {
 		fmt.Printf("Warning: unable to parse float from string '%s': %v\n", s, err)
 		return 0 // Возвращаем 0, если конвертация не удалась
 	}
-
 	return v
 }
 
