@@ -16,49 +16,44 @@ type Product struct {
 	ImageBase64 string  // Изображение в Base64 (столбец D)
 	Material    float64 // Материал (столбец E)
 	Laser       float64 // Лазер (столбец F)
-	Bend        int     // Гиб (столбец G)
-	Weld        int     // Свар (столбец H)
-	Paint       int     // Окраска (столбец I)
+	Bend        float64 // Гиб (столбец G)
+	Weld        float64 // Свар (столбец H)
+	Paint       float64 // Окраска (столбец I)
 	Production  float64 // Производство (Сумма столбцов H, J, K, L, M, N, O)
 	AddP        float64 // Допы П (столбец N)
 	AddL        float64 // Допы Л (столбец O)
 	PipeCutting float64 // Труборез (столбец P)
 }
 
-// Функция для конверсии строки с запятой в float64
-func parseLocalizedFloat(s string) float64 {
-	fmt.Printf("Original input: '%s'\n", s)
-	// Удаление пробелов между цифрами
+// Функция для обработки чисел с пробелами, запятыми и точками
+func parseFloatOrInt(input string) float64 {
+	fmt.Printf("Original input: '%s'\n", input)
+
+	// Убираем пробелы между цифрами
 	re := regexp.MustCompile(`(\d)\s+(\d)`)
-	s = re.ReplaceAllString(s, "$1$2")
-	fmt.Printf("After removing spaces: '%s'\n", s)
+	input = re.ReplaceAllString(input, "$1$2")
+	fmt.Printf("After removing spaces: '%s'\n", input)
 
-	// Проверка на пустую строку
-	if s == "" {
-		fmt.Println("String is empty, returning 0")
-		return 0
+	// Удаляем лишние точки, оставляя только последнюю
+	if strings.Count(input, ".") > 1 {
+		parts := strings.Split(input, ".")
+		input = strings.Join(parts[:len(parts)-1], "") + "." + parts[len(parts)-1]
+		fmt.Printf("After fixing dots: '%s'\n", input)
 	}
 
-	// Удаление лишних точек
-	if strings.Count(s, ".") > 1 {
-		parts := strings.Split(s, ".")
-		s = strings.Join(parts[:len(parts)-1], "") + "." + parts[len(parts)-1]
-		fmt.Printf("After fixing dots: '%s'\n", s)
-	}
+	// Заменяем запятую на точку
+	input = strings.ReplaceAll(input, ",", ".")
+	fmt.Printf("After replacing commas: '%s'\n", input)
 
-	// Замена запятой на точку
-	s = strings.ReplaceAll(s, ",", ".")
-	fmt.Printf("After replacing commas: '%s'\n", s)
-
-	// Преобразование в float64
-	v, err := strconv.ParseFloat(s, 64)
+	// Пробуем преобразовать в float64
+	value, err := strconv.ParseFloat(input, 64)
 	if err != nil {
-		fmt.Printf("Error parsing float: %v\n", err)
+		fmt.Printf("Warning: unable to parse float or int from string '%s': %v\n", input, err)
 		return 0
 	}
 
-	fmt.Printf("Parsed float: %f\n", v)
-	return v
+	fmt.Printf("Parsed float: %f\n", value)
+	return value
 }
 
 // Функция для чтения строк из Excel
@@ -78,12 +73,6 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 
 	var products []Product
 
-	// Преобразование строки в int
-	parseInt := func(s string) int {
-		v, _ := strconv.Atoi(s)
-		return v
-	}
-
 	// Обработка каждой строки
 	for i, cells := range rows {
 		if i == 0 || len(cells) < 16 { // Пропускаем заголовок и проверяем минимальное количество столбцов
@@ -95,9 +84,6 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			break
 		}
 
-		// Логируем данные строки
-		fmt.Printf("Row %d: %+v\n", i+1, cells)
-
 		// Получение Base64 строки изображения из ячейки
 		imageBase64 := ""
 		imageData, err := getImageBase64FromExcel(f, "Статистика", fmt.Sprintf("D%d", i+1))
@@ -108,33 +94,34 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 		}
 
 		// Суммируем для Production
-		production := parseLocalizedFloat(cells[7]) + // H
-			parseLocalizedFloat(cells[9]) + // J
-			parseLocalizedFloat(cells[10]) + // K
-			parseLocalizedFloat(cells[11]) + // L
-			parseLocalizedFloat(cells[12]) + // M
-			parseLocalizedFloat(cells[13]) + // N
-			parseLocalizedFloat(cells[14]) // O
-
-		product := Product{
-			Name:        cells[0],
-			Quantity:    parseLocalizedFloat(cells[1]),
-			Price:       parseLocalizedFloat(cells[2]),
-			ImageBase64: imageBase64,
-			Material:    parseLocalizedFloat(cells[4]),
-			Laser:       parseLocalizedFloat(cells[5]),
-			Bend:        parseInt(cells[6]),
-			Weld:        parseInt(cells[7]),
-			Paint:       parseInt(cells[8]),
-			Production:  production,
-			AddP:        parseLocalizedFloat(cells[13]),
-			AddL:        parseLocalizedFloat(cells[14]),
-			PipeCutting: parseLocalizedFloat(cells[15]),
+		production := 0.0
+		for _, colIndex := range []int{7, 9, 10, 11, 12, 13, 14} {
+			if colIndex < len(cells) && cells[colIndex] != "" {
+				production += parseFloatOrInt(cells[colIndex])
+			} else {
+				fmt.Printf("Warning: missing or empty value at column %d, row %d\n", colIndex, i+1)
+			}
 		}
 
-		fmt.Printf("Parsed Product Price: %+v\n", product.Price)
+		// Создаём объект Product
+		product := Product{
+			Name:        cells[0],
+			Quantity:    parseFloatOrInt(cells[1]),
+			Price:       parseFloatOrInt(cells[2]),
+			ImageBase64: imageBase64,
+			Material:    parseFloatOrInt(cells[4]),
+			Laser:       parseFloatOrInt(cells[5]),
+			Bend:        parseFloatOrInt(cells[6]), // Исправлено
+			Weld:        parseFloatOrInt(cells[7]), // Исправлено
+			Paint:       parseFloatOrInt(cells[8]),
+			Production:  production,
+			AddP:        parseFloatOrInt(cells[13]),
+			AddL:        parseFloatOrInt(cells[14]),
+			PipeCutting: parseFloatOrInt(cells[15]),
+		}
 
 		products = append(products, product)
+		fmt.Printf("Parsed Product: %+v\n", product)
 	}
 
 	fmt.Println("Excel processing completed.")
