@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -16,38 +15,24 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 	log.Println("Content-Type:", contentType)
 
-	var fileID string
+	var fileID, dealID, smartProcessID string
 
-	// Извлекаем параметры из запроса
-	switch {
-	case strings.HasPrefix(contentType, "multipart/form-data"):
-		if err := r.ParseMultipartForm(10 << 20); err != nil {
-			log.Println("Error parsing multipart data:", err)
-			http.Error(w, "Invalid multipart data", http.StatusBadRequest)
-			return
-		}
-		for key, values := range r.Form {
-			log.Printf("Form Field %s: %v\n", key, values)
-			if key == "file_id" && len(values) > 0 {
-				fileID = values[0]
-			}
-		}
+	// Извлекаем параметры из URL
+	queryParams := r.URL.Query()
 
-	case contentType == "application/x-www-form-urlencoded":
-		if err := r.ParseForm(); err != nil {
-			log.Println("Error parsing URL-encoded data:", err)
-			http.Error(w, "Invalid form data", http.StatusBadRequest)
-			return
-		}
-		for key, values := range r.Form {
-			log.Printf("Form Field %s: %v\n", key, values)
-			if key == "file_id" && len(values) > 0 {
-				fileID = values[0]
-			}
-		}
+	// Считываем необходимые параметры
+	dealID = queryParams.Get("deal_id")
+	smartProcessID = queryParams.Get("smartProcessID")
+	fileID = queryParams.Get("file_id")
+
+	if dealID != "" {
+		log.Printf("Extracted deal_id: %s\n", dealID)
 	}
 
-	// Проверяем, есть ли необходимые параметры
+	if smartProcessID != "" {
+		log.Printf("Extracted smartProcessID: %s\n", smartProcessID)
+	}
+
 	if fileID == "" {
 		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
 		return
@@ -65,7 +50,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	log.Printf("DOWNLOAD_URL: %s\n", fileDetails.DownloadURL)
 
 	// Скачиваем файл с итерацией имени
-	downloadCounter++
+	fileName := fmt.Sprintf("file_downloaded_xls%d.xlsx", downloadCounter)
 	err = downloadFile(fileDetails.DownloadURL, downloadCounter)
 	if err != nil {
 		log.Println("Error downloading file:", err)
@@ -73,9 +58,16 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Успешный ответ
+	products, err := ReadXlsProductRows(fileName)
+	if err != nil {
+		log.Println("Error reading Excel file:", err)
+		http.Error(w, "Failed to process Excel file", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Processed products: %+v\n", products)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("File downloaded successfully as file_downloaded_xls%d.xlsx", downloadCounter)))
+	w.Write([]byte("File processed successfully"))
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
