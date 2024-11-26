@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/xuri/excelize/v2"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,7 +26,41 @@ type Product struct {
 	PipeCutting float64 // Труборез (столбец P)
 }
 
-// Функция для обработки чисел с пробелами, запятыми и точками
+// Специальная функция для обработки столбца Price
+func parsePrice(input string) float64 {
+	fmt.Printf("Original Price input: '%s'\n", input)
+
+	// Удаление пробелов между цифрами
+	re := regexp.MustCompile(`(\d)\s+(\d)`)
+	input = re.ReplaceAllString(input, "$1$2")
+	fmt.Printf("After removing spaces: '%s'\n", input)
+
+	// Замена всех запятых на точки
+	input = strings.ReplaceAll(input, ",", ".")
+
+	// Проверка на наличие более одной точки
+	if strings.Count(input, ".") > 1 {
+		// Оставляем только последнюю точку
+		parts := strings.Split(input, ".")
+		input = strings.Join(parts[:len(parts)-1], "") + "." + parts[len(parts)-1]
+		fmt.Printf("After fixing dots: '%s'\n", input)
+	}
+
+	// Преобразование в float64
+	value, err := strconv.ParseFloat(input, 64)
+	if err != nil {
+		fmt.Printf("Error parsing Price: %v\n", err)
+		return 0
+	}
+
+	// Округляем до двух знаков после запятой
+	value = math.Round(value*100) / 100
+	fmt.Printf("Parsed and rounded Price: %f\n", value)
+
+	return value
+}
+
+// Функция для обработки чисел в других столбцах
 func parseFloatOrInt(input string) float64 {
 	fmt.Printf("Original input: '%s'\n", input)
 
@@ -33,13 +68,6 @@ func parseFloatOrInt(input string) float64 {
 	re := regexp.MustCompile(`(\d)\s+(\d)`)
 	input = re.ReplaceAllString(input, "$1$2")
 	fmt.Printf("After removing spaces: '%s'\n", input)
-
-	// Удаляем лишние точки, оставляя только последнюю
-	if strings.Count(input, ".") > 1 {
-		parts := strings.Split(input, ".")
-		input = strings.Join(parts[:len(parts)-1], "") + "." + parts[len(parts)-1]
-		fmt.Printf("After fixing dots: '%s'\n", input)
-	}
 
 	// Заменяем запятую на точку
 	input = strings.ReplaceAll(input, ",", ".")
@@ -107,12 +135,12 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 		product := Product{
 			Name:        cells[0],
 			Quantity:    parseFloatOrInt(cells[1]),
-			Price:       parseFloatOrInt(cells[2]),
+			Price:       parsePrice(cells[2]), // Используем parsePrice для обработки столбца C
 			ImageBase64: imageBase64,
 			Material:    parseFloatOrInt(cells[4]),
 			Laser:       parseFloatOrInt(cells[5]),
-			Bend:        parseFloatOrInt(cells[6]), // Исправлено
-			Weld:        parseFloatOrInt(cells[7]), // Исправлено
+			Bend:        parseFloatOrInt(cells[6]),
+			Weld:        parseFloatOrInt(cells[7]),
 			Paint:       parseFloatOrInt(cells[8]),
 			Production:  production,
 			AddP:        parseFloatOrInt(cells[13]),
