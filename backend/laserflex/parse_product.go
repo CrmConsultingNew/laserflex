@@ -26,12 +26,27 @@ type Product struct {
 
 // Функция для конверсии строки с запятой в float64
 func parseLocalizedFloat(s string) float64 {
-	// Удаляем пробелы и заменяем запятую на точку
-	s = strings.ReplaceAll(s, " ", "")
-	s = strings.ReplaceAll(s, ",", ".")
-	v, err := strconv.ParseFloat(s, 64)
+	// Удаляем все лишние символы, оставляем только цифры, точки и запятые
+	processed := ""
+	for _, r := range s {
+		if (r >= '0' && r <= '9') || r == '.' || r == ',' {
+			processed += string(r)
+		}
+	}
+
+	// Заменяем запятую на точку
+	processed = strings.ReplaceAll(processed, ",", ".")
+
+	// Если строка содержит более одной точки, оставляем только первую
+	if strings.Count(processed, ".") > 1 {
+		parts := strings.Split(processed, ".")
+		processed = parts[0] + "." + strings.Join(parts[1:], "")
+	}
+
+	// Парсим результат
+	v, err := strconv.ParseFloat(processed, 64)
 	if err != nil {
-		fmt.Printf("Warning: unable to parse float from string '%s': %v\n", s, err)
+		fmt.Printf("Warning: unable to parse float from string '%s' (processed: '%s'): %v\n", s, processed, err)
 		return 0 // Возвращаем 0, если конвертация не удалась
 	}
 	return v
