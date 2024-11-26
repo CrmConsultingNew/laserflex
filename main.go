@@ -14,9 +14,13 @@ import (
 
 func main() {
 
+	//laserflex.ReadXlsRegistryRows("file.xlsx")
+
 	/*laserflex.ReadXlsProducts("file_downloaded_xls1.xlsx")
 	laserflex.ReadXlsProductRow("file_downloaded_xls1.xlsx")
 	return*/
+
+	//return
 	fmt.Println("service starting...")
 
 	// Загрузка переменных окружения из файла .env
