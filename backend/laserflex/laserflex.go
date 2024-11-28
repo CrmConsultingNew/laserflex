@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -18,6 +19,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	var fileID, dealID, smartProcessID string
 	var assignedById int
+	var docIDs []int // Массив для хранения docId
 
 	// Извлекаем параметры из URL
 	queryParams := r.URL.Query()
@@ -120,6 +122,9 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Добавляем docId в массив
+	docIDs = append(docIDs, docId)
+
 	if len(productIDs) != len(quantities) {
 		log.Println("Mismatched lengths: productIDs and quantities")
 		http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
@@ -127,12 +132,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i, productId := range productIDs {
-		if i >= len(quantities) {
-			log.Printf("Mismatched lengths: productIDs and quantities")
-			http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
-			return
-		}
-
 		quantity := quantities[i]
 
 		err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
@@ -143,10 +142,19 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = ConductDocumentId(docId) // провести документ
+	// Проведение документа
+	err = ConductDocumentId(docId)
 	if err != nil {
-		log.Printf("Error adding catalog document with element: %v", err)
-		http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
+		log.Printf("Error conducting document: %v", err)
+		http.Error(w, "Failed to conduct document", http.StatusInternalServerError)
+		return
+	}
+
+	// Сохраняем docIDs в текстовый файл
+	err = saveDocIDsToFile("document_ids.txt", docIDs)
+	if err != nil {
+		log.Printf("Error saving document IDs to file: %v", err)
+		http.Error(w, "Failed to save document IDs to file", http.StatusInternalServerError)
 		return
 	}
 
@@ -154,6 +162,25 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File processed and products added successfully"))
+}
+
+// Функция для сохранения docIDs в текстовый файл
+func saveDocIDsToFile(filename string, docIDs []int) error {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening file: %v", err)
+	}
+	defer file.Close()
+
+	for _, id := range docIDs {
+		_, err := file.WriteString(fmt.Sprintf("%d\n", id))
+		if err != nil {
+			return fmt.Errorf("error writing to file: %v", err)
+		}
+	}
+
+	log.Printf("Document IDs saved to file: %s", filename)
+	return nil
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
