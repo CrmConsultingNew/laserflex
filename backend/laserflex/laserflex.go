@@ -135,12 +135,19 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 		quantity := quantities[i]
 
-		err := AddCatalogDocumentElement(docId, productId, quantity)
+		err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
 		if err != nil {
 			log.Printf("Error adding catalog document with element: %v", err)
 			http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
 			return
 		}
+	}
+
+	err = ConductDocumentId(docId) // провести документ
+	if err != nil {
+		log.Printf("Error adding catalog document with element: %v", err)
+		http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
+		return
 	}
 
 	log.Printf("Product rows and catalog document added successfully for deal %s", dealID)
