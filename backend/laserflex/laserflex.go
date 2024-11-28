@@ -113,11 +113,34 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Добавление документа в Bitrix24
-	err = AddCatalogDocument(dealID, assignedById, totalProductsPrice)
+	docId, err := AddCatalogDocument(dealID, assignedById, totalProductsPrice)
 	if err != nil {
 		log.Printf("Error adding catalog document: %v", err)
 		http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
 		return
+	}
+
+	if len(productIDs) != len(quantities) {
+		log.Println("Mismatched lengths: productIDs and quantities")
+		http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
+		return
+	}
+
+	for i, productId := range productIDs {
+		if i >= len(quantities) {
+			log.Printf("Mismatched lengths: productIDs and quantities")
+			http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
+			return
+		}
+
+		quantity := quantities[i]
+
+		err := AddCatalogDocumentElement(docId, productId, quantity)
+		if err != nil {
+			log.Printf("Error adding catalog document with element: %v", err)
+			http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	log.Printf("Product rows and catalog document added successfully for deal %s", dealID)

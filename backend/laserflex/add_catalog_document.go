@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func AddCatalogDocument(dealID string, assignedById int, totalProductsPrice float64) error {
+func AddCatalogDocument(dealID string, assignedById int, totalProductsPrice float64) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "catalog.document.add"
 
@@ -18,7 +18,7 @@ func AddCatalogDocument(dealID string, assignedById int, totalProductsPrice floa
 	// Формируем тело запроса
 	requestBody := map[string]interface{}{
 		"fields": map[string]interface{}{
-			"docType":       "S",
+			"docType":       "A",
 			"responsibleId": assignedById,
 			"createdBy":     assignedById,
 			"currency":      "RUB",
@@ -31,40 +31,52 @@ func AddCatalogDocument(dealID string, assignedById int, totalProductsPrice floa
 
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		return fmt.Errorf("error marshalling request body: %v", err)
+		return 0, fmt.Errorf("error marshalling request body: %v", err)
 	}
 
 	// Создаем HTTP запрос
 	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return fmt.Errorf("error creating HTTP request: %v", err)
+		return 0, fmt.Errorf("error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	// Отправляем запрос
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("error sending HTTP request: %v", err)
+		return 0, fmt.Errorf("error sending HTTP request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	// Читаем ответ
 	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("error reading response body: %v", err)
+		return 0, fmt.Errorf("error reading response body: %v", err)
 	}
 
 	// Парсим ответ
-	var response map[string]interface{}
+	var response struct {
+		Result struct {
+			Document struct {
+				ID int `json:"id"`
+			} `json:"document"`
+		} `json:"result"`
+		Error            string `json:"error"`
+		ErrorDescription string `json:"error_description"`
+	}
+
 	if err := json.Unmarshal(responseData, &response); err != nil {
-		return fmt.Errorf("error unmarshalling response: %v", err)
+		return 0, fmt.Errorf("error unmarshalling response: %v", err)
 	}
 
-	// Проверяем ошибки в ответе
-	if _, ok := response["error"]; ok {
-		return fmt.Errorf("Ошибка: %s", response["error_description"])
+	// Проверяем наличие ошибок в ответе
+	if response.Error != "" {
+		return 0, fmt.Errorf("Ошибка: %s", response.ErrorDescription)
 	}
 
-	log.Println("Документ успешно добавлен:", response["result"])
-	return nil
+	// Логируем успешное добавление документа
+	log.Printf("Документ успешно добавлен: ID=%d\n", response.Result.Document.ID)
+
+	// Возвращаем ID созданного документа
+	return response.Result.Document.ID, nil
 }

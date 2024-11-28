@@ -6,7 +6,9 @@
   <component name="ChangeListManager">
     <list default="true" id="4777308f-843b-41bb-9def-5ab1b57ee989" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/laserflex/parse_product.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/laserflex/parse_product.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/laserflex/add_catalog_document.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/laserflex/add_catalog_document.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/laserflex/laserflex.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/laserflex/laserflex.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
