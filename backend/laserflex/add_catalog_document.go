@@ -26,6 +26,7 @@ func AddCatalogDocument(dealID string, assignedById int, totalProductsPrice floa
 			"statusBy":      assignedById,
 			"total":         fmt.Sprintf("%.2f", totalProductsPrice), // Округляем до двух знаков
 			"title":         dealID,
+			"contractorId":  556,
 		},
 	}
 
