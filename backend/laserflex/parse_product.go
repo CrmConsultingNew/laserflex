@@ -88,12 +88,14 @@ func parseFloatOrInt(input string) float64 {
 func ReadXlsProductRows(filename string) ([]Product, error) {
 	fmt.Println("Processing Excel file...")
 
+	// Открываем файл Excel
 	f, err := excelize.OpenFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %v", err)
 	}
 	defer f.Close()
 
+	// Читаем строки из листа "Статистика"
 	rows, err := f.GetRows("Статистика")
 	if err != nil {
 		return nil, fmt.Errorf("error reading rows: %v", err)
@@ -101,15 +103,19 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 
 	var products []Product
 
-	// Обработка каждой строки
+	// Обрабатываем каждую строку
 	for i, cells := range rows {
 		if i == 0 || len(cells) < 16 { // Пропускаем заголовок и проверяем минимальное количество столбцов
 			continue
 		}
 
-		// Завершаем обработку, если первая колонка пустая
-		if cells[0] == "" {
-			break
+		// Проверяем первую ячейку на условия завершения
+		if len(cells) > 0 {
+			name := strings.TrimSpace(cells[0]) // Убираем лишние пробелы
+			if name == "" || strings.EqualFold(name, "Доставка") || strings.Contains(strings.ToLower(name), "общее") {
+				fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i+1, name)
+				break
+			}
 		}
 
 		// Получение Base64 строки изображения из ячейки

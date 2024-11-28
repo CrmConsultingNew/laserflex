@@ -98,12 +98,14 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	// После получения productIDs и products
 	var quantities []float64
+	var prices []float64
 	for _, product := range products {
 		quantities = append(quantities, product.Quantity)
+		prices = append(prices, product.Price)
 	}
 
 	// Добавление товаров в сделку
-	err = AddProductsRowToDeal(dealID, productIDs, quantities)
+	err = AddProductsRowToDeal(dealID, productIDs, quantities, prices)
 	if err != nil {
 		log.Printf("Error adding product rows to deal: %v", err)
 		http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
@@ -175,7 +177,7 @@ func GetFileDetails(fileID string) (*FileDetails, error) {
 	return &response.Result, nil
 }
 
-func AddProductsRowToDeal(dealID string, productIDs []int, quantities []float64) error {
+func AddProductsRowToDeal(dealID string, productIDs []int, quantities []float64, prices []float64) error {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "crm.deal.productrows.set"
 
@@ -187,6 +189,7 @@ func AddProductsRowToDeal(dealID string, productIDs []int, quantities []float64)
 		rows = append(rows, map[string]interface{}{
 			"PRODUCT_ID": productID,
 			"QUANTITY":   quantities[i],
+			"PRICE":      prices[i],
 		})
 	}
 
