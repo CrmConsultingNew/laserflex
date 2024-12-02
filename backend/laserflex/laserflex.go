@@ -166,7 +166,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	// Конвертация Excel в JSON
 	StartJsonConverterFromExcel(fileName)
 
-	// Чтение JSON данных
 	var parsedData []ParsedData
 	jsonData, err := os.ReadFile("output.json")
 	if err != nil {
@@ -180,21 +179,16 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Инициализация ID задач
 	var laserWorksId, bendWorksId, pipeCuttingId, productionId int
-
-	// Лимит итераций
 	iterationLimit := 10
 	iterationCount := 0
 
-	// Обработка JSON данных
 	for _, data := range parsedData {
 		if iterationCount >= iterationLimit {
 			log.Println("Reached iteration limit of 10, stopping further processing.")
 			break
 		}
 
-		// LaserWorks
 		if data.LaserWorks != nil && laserWorksId == 0 {
 			laserWorksId, err = AddTaskToGroup("laser_works", 149, data.LaserWorks.GroupID, 1046, 458)
 			if err != nil {
@@ -204,7 +198,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			log.Printf("LaserWorks Task created with ID: %d\n", laserWorksId)
 		}
 
-		// BendWorks
 		if data.BendWorks != nil && bendWorksId == 0 {
 			bendWorksId, err = AddTaskToGroup("bend_works", 149, data.BendWorks.GroupID, 1046, 458)
 			if err != nil {
@@ -214,7 +207,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			log.Printf("BendWorks Task created with ID: %d\n", bendWorksId)
 		}
 
-		// PipeCutting
 		if data.PipeCutting != nil && pipeCuttingId == 0 {
 			pipeCuttingId, err = AddTaskToGroup("pipe_cutting", 149, data.PipeCutting.GroupID, 1046, 458)
 			if err != nil {
@@ -224,7 +216,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			log.Printf("PipeCutting Task created with ID: %d\n", pipeCuttingId)
 		}
 
-		// Production
 		if data.Production != nil && productionId == 0 {
 			productionId, err = AddTaskToGroup("production", 149, data.Production.GroupID, 1046, 458)
 			if err != nil {
@@ -237,11 +228,61 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		iterationCount++
 	}
 
-	// Вывод всех ID задач в консоль
-	log.Printf("Task IDs: laserWorksId=%d, bendWorksId=%d, pipeCuttingId=%d, productionId=%d\n", laserWorksId, bendWorksId, pipeCuttingId, productionId)
+	// Добавление подзадач к каждой группе
+	for _, data := range parsedData {
+		if data.LaserWorks != nil {
+			customFields := CustomTaskFields{
+				OrderNumber: data.LaserWorks.Data["№ заказа"],
+				Customer:    data.LaserWorks.Data["Заказчик"],
+				Manager:     data.LaserWorks.Data["Менеджер"],
+				Material:    data.LaserWorks.Data["Количество материала"],
+				Comment:     data.LaserWorks.Data["Комментарий"],
+				Coating:     data.LaserWorks.Data["Нанесение покрытий"],
+			}
+			_, err = AddTaskToParentId("laser_works_subtask", 149, data.LaserWorks.GroupID, laserWorksId, customFields)
+			if err != nil {
+				log.Printf("Error creating laser_works subtask: %v\n", err)
+				continue
+			}
+		}
 
+		if data.BendWorks != nil {
+			customFields := CustomTaskFields{
+				OrderNumber: data.BendWorks.Data["№ заказа"],
+				Customer:    data.BendWorks.Data["Заказчик"],
+				Manager:     data.BendWorks.Data["Менеджер"],
+				Material:    data.BendWorks.Data["Количество материала"],
+				Comment:     data.BendWorks.Data["Комментарий"],
+				Coating:     data.BendWorks.Data["Нанесение покрытий"],
+			}
+			_, err = AddTaskToParentId("bend_works_subtask", 149, data.BendWorks.GroupID, bendWorksId, customFields)
+			if err != nil {
+				log.Printf("Error creating bend_works subtask: %v\n", err)
+				continue
+			}
+		}
+
+		if data.PipeCutting != nil {
+			customFields := CustomTaskFields{
+				OrderNumber: data.PipeCutting.Data["№ заказа"],
+				Customer:    data.PipeCutting.Data["Заказчик"],
+				Manager:     data.PipeCutting.Data["Менеджер"],
+				Material:    data.PipeCutting.Data["Количество материала"],
+				Comment:     data.PipeCutting.Data["Комментарий"],
+				Coating:     data.PipeCutting.Data["Нанесение покрытий"],
+			}
+			_, err = AddTaskToParentId("pipe_cutting_subtask", 149, data.PipeCutting.GroupID, pipeCuttingId, customFields)
+			if err != nil {
+				log.Printf("Error creating pipe_cutting subtask: %v\n", err)
+				continue
+			}
+		}
+
+	}
+
+	log.Println("All tasks and subtasks processed successfully")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("File processed, tasks added successfully"))
+	w.Write([]byte("File processed, tasks and subtasks added successfully"))
 }
 
 // Функция для сохранения docIDs в текстовый файл

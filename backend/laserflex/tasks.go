@@ -161,17 +161,17 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 			"RESPONSIBLE_ID": responsibleID,
 			"GROUP_ID":       groupID,
 			"PARENT_ID":      parentID,
-			// Добавляем пользовательские поля
-			"UF_AUTO_303168834495": customFields.OrderNumber,       // № заказа
-			"UF_AUTO_876283676967": customFields.Customer,          // Заказчик
-			"UF_AUTO_794809224848": customFields.Manager,           // Менеджер
-			"UF_AUTO_468857876599": customFields.Material,          // Материал
-			"UF_AUTO_497907774817": customFields.Comment,           // Комментарий
-			"UF_AUTO_433735177517": customFields.ProductionTask,    // Произв. Задача
-			"UF_AUTO_726724682983": customFields.Bend,              // Гибка
-			"UF_AUTO_512869473370": customFields.Coating,           // Покрытие
-			"UF_AUTO_555642596740": customFields.TemporaryOrderSum, // Временная сумма заказа
-			"UF_AUTO_552243496167": customFields.Quantity,          // Кол-во
+			// Добавляем пользовательские поля с учетом формата массива
+			"UF_AUTO_303168834495": []string{customFields.OrderNumber},    // № заказа
+			"UF_AUTO_876283676967": []string{customFields.Customer},       // Заказчик
+			"UF_AUTO_794809224848": []string{customFields.Manager},        // Менеджер
+			"UF_AUTO_468857876599": []string{customFields.Material},       // Материал
+			"UF_AUTO_497907774817": []string{customFields.Comment},        // Комментарий
+			"UF_AUTO_433735177517": []string{customFields.ProductionTask}, // Произв. Задача
+			"UF_AUTO_726724682983": []string{customFields.Bend},           // Гибка
+			"UF_AUTO_512869473370": []string{customFields.Coating},        // Покрытие
+			"UF_AUTO_555642596740": customFields.TemporaryOrderSum,        // Временная сумма заказа (одиночное значение)
+			"UF_AUTO_552243496167": []string{customFields.Quantity},       // Кол-во
 		},
 	}
 
@@ -201,6 +201,9 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 		return 0, fmt.Errorf("error reading response body: %v", err)
 	}
 
+	// Логируем ответ для отладки
+	log.Printf("Response from Bitrix24: %s\n", string(responseData))
+
 	// Разбираем ответ
 	var response TaskResponse
 	if err := json.Unmarshal(responseData, &response); err != nil {
@@ -212,7 +215,7 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 		return 0, fmt.Errorf("failed to create subtask, response: %s", string(responseData))
 	}
 
-	log.Println("Subtask created with ID:", response.Result)
+	log.Printf("Subtask created with ID: %d\n", response.Result.Task.ID)
 	return response.Result.Task.ID, nil
 }
 
