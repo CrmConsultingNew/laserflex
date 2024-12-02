@@ -96,12 +96,36 @@ func AddTaskToGroup(title string, responsibleID, groupID, processTypeID, element
 		return 0, fmt.Errorf("error reading response body: %v", err)
 	}
 
-	var response TaskResponse
+	// Логирование для отладки
+	log.Printf("Raw Response: %s\n", string(responseData))
+
+	// Измененная структура ответа
+	var response struct {
+		Result struct {
+			Task struct {
+				ID json.RawMessage `json:"id"` // Используем RawMessage для обработки id как строки или числа
+			} `json:"task"`
+		} `json:"result"`
+	}
+
 	if err := json.Unmarshal(responseData, &response); err != nil {
 		return 0, fmt.Errorf("error unmarshalling response: %v", err)
 	}
 
-	taskID := response.Result.Task.ID
+	// Обрабатываем ID задачи
+	var taskID int
+	if err := json.Unmarshal(response.Result.Task.ID, &taskID); err != nil {
+		// Если id не является числом, пробуем распарсить его как строку
+		var taskIDStr string
+		if err := json.Unmarshal(response.Result.Task.ID, &taskIDStr); err != nil {
+			return 0, fmt.Errorf("error parsing task id: %v", err)
+		}
+		taskID, err = strconv.Atoi(taskIDStr)
+		if err != nil {
+			return 0, fmt.Errorf("error converting task id to int: %v", err)
+		}
+	}
+
 	if taskID == 0 {
 		return 0, fmt.Errorf("failed to create task, response: %s", string(responseData))
 	}
