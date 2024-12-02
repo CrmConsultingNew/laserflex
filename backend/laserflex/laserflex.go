@@ -159,10 +159,10 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productionEngineerId, err := GetProductionEngineerIdByDeal(dealID)
+	/*productionEngineerId, err := GetProductionEngineerIdByDeal(dealID)
 	if err != nil {
 		log.Printf("Error getting production engineer ID: %v", err)
-	}
+	}*/
 
 	// Конвертируем файл Excel в JSON
 	StartJsonConverterFromExcel(fileName)
@@ -181,10 +181,19 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Лимит итераций
+	iterationLimit := 10
+	iterationCount := 0
+
 	// Обрабатываем каждый блок данных из JSON
 	for _, data := range parsedData {
+		if iterationCount >= iterationLimit {
+			log.Println("Reached iteration limit of 10, stopping further processing.")
+			break
+		}
+
 		if data.LaserWorks != nil {
-			taskID, err := AddTaskToGroup("laser_works", productionEngineerId, data.LaserWorks.GroupID, 1046, 458)
+			taskID, err := AddTaskToGroup("laser_works", 149, data.LaserWorks.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating laser_works task: %v\n", err)
 				continue
@@ -193,16 +202,14 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 			// Создаем подзадачи для laser_works
 			customFields := CustomTaskFields{
-				OrderNumber:       data.LaserWorks.Data["№ заказа"],
-				Customer:          data.LaserWorks.Data["Заказчик"],
-				Manager:           data.LaserWorks.Data["Менеджер"],
-				Material:          data.LaserWorks.Data["Количество материала"],
-				Comment:           data.LaserWorks.Data["Комментарий"],
-				Coating:           data.LaserWorks.Data["Нанесение покрытий"],
-				TemporaryOrderSum: "", // Указать, если есть
-				Quantity:          "", // Указать, если есть
+				OrderNumber: data.LaserWorks.Data["№ заказа"],
+				Customer:    data.LaserWorks.Data["Заказчик"],
+				Manager:     data.LaserWorks.Data["Менеджер"],
+				Material:    data.LaserWorks.Data["Количество материала"],
+				Comment:     data.LaserWorks.Data["Комментарий"],
+				Coating:     data.LaserWorks.Data["Нанесение покрытий"],
 			}
-			subTaskID, err := AddTaskToParentId("laser_works", productionEngineerId, data.LaserWorks.GroupID, taskID, customFields)
+			subTaskID, err := AddTaskToParentId("laser_works", 149, data.LaserWorks.GroupID, taskID, customFields)
 			if err != nil {
 				log.Printf("Error creating laser_works subtask: %v\n", err)
 				continue
@@ -211,7 +218,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if data.BendWorks != nil {
-			taskID, err := AddTaskToGroup("bend_works", productionEngineerId, data.BendWorks.GroupID, 1046, 458)
+			taskID, err := AddTaskToGroup("bend_works", 149, data.BendWorks.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating bend_works task: %v\n", err)
 				continue
@@ -220,16 +227,14 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 			// Создаем подзадачи для bend_works
 			customFields := CustomTaskFields{
-				OrderNumber:       data.BendWorks.Data["№ заказа"],
-				Customer:          data.BendWorks.Data["Заказчик"],
-				Manager:           data.BendWorks.Data["Менеджер"],
-				Material:          data.BendWorks.Data["Количество материала"],
-				Comment:           data.BendWorks.Data["Комментарий"],
-				Coating:           data.BendWorks.Data["Нанесение покрытий"],
-				TemporaryOrderSum: "", // Указать, если есть
-				Quantity:          "", // Указать, если есть
+				OrderNumber: data.BendWorks.Data["№ заказа"],
+				Customer:    data.BendWorks.Data["Заказчик"],
+				Manager:     data.BendWorks.Data["Менеджер"],
+				Material:    data.BendWorks.Data["Количество материала"],
+				Comment:     data.BendWorks.Data["Комментарий"],
+				Coating:     data.BendWorks.Data["Нанесение покрытий"],
 			}
-			subTaskID, err := AddTaskToParentId("bend_works", productionEngineerId, data.BendWorks.GroupID, taskID, customFields)
+			subTaskID, err := AddTaskToParentId("bend_works", 149, data.BendWorks.GroupID, taskID, customFields)
 			if err != nil {
 				log.Printf("Error creating bend_works subtask: %v\n", err)
 				continue
@@ -245,13 +250,15 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 
-			taskID, err := AddTaskWithChecklist("production", productionEngineerId, 1046, 458, checklist)
+			taskID, err := AddTaskWithChecklist("production", 149, 1046, 458, checklist)
 			if err != nil {
 				log.Printf("Error creating production task: %v\n", err)
 				continue
 			}
 			log.Printf("Production Task with checklist created with ID: %d\n", taskID)
 		}
+
+		iterationCount++
 	}
 
 	w.WriteHeader(http.StatusOK)
