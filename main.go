@@ -2,7 +2,6 @@ package main
 
 import (
 	"bitrix_app/backend/bitrix/endpoints"
-	"bitrix_app/backend/laserflex"
 	"bitrix_app/backend/routes"
 	"fmt"
 	"github.com/joho/godotenv"
@@ -15,13 +14,15 @@ import (
 
 func main() {
 
+	//laserflex.StartJsonConverterFromExcel("file.xlsx")
+
 	//laserflex.ReadXlsRegistryWithConditions("file.xlsx")
-	laserflex.StartJsonConverterFromExcel("file.xlsx")
+
 	/*laserflex.ReadXlsProducts("file_downloaded_xls1.xlsx")
 	laserflex.ReadXlsProductRow("file_downloaded_xls1.xlsx")
 	return*/
 
-	return
+	//return
 	fmt.Println("service starting...")
 
 	// Загрузка переменных окружения из файла .env
