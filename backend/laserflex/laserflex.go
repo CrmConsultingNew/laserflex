@@ -192,7 +192,9 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
+		// Обработка LaserWorks
 		if data.LaserWorks != nil {
+			// Создаем задачу один раз
 			taskID, err := AddTaskToGroup("laser_works", 149, data.LaserWorks.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating laser_works task: %v\n", err)
@@ -200,7 +202,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			}
 			log.Printf("LaserWorks Task created with ID: %d\n", taskID)
 
-			// Создаем подзадачи для laser_works
+			// Создаем подзадачи
 			customFields := CustomTaskFields{
 				OrderNumber: data.LaserWorks.Data["№ заказа"],
 				Customer:    data.LaserWorks.Data["Заказчик"],
@@ -209,7 +211,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				Comment:     data.LaserWorks.Data["Комментарий"],
 				Coating:     data.LaserWorks.Data["Нанесение покрытий"],
 			}
-			subTaskID, err := AddTaskToParentId("laser_works_subtask", 149, data.LaserWorks.GroupID, taskID, customFields)
+			subTaskID, err := AddTaskToParentId("laser_works", 149, data.LaserWorks.GroupID, taskID, customFields)
 			if err != nil {
 				log.Printf("Error creating laser_works subtask: %v\n", err)
 				continue
@@ -217,7 +219,9 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			log.Printf("LaserWorks Subtask created with ID: %d\n", subTaskID)
 		}
 
+		// Обработка BendWorks
 		if data.BendWorks != nil {
+			// Создаем задачу один раз
 			taskID, err := AddTaskToGroup("bend_works", 149, data.BendWorks.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating bend_works task: %v\n", err)
@@ -225,7 +229,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			}
 			log.Printf("BendWorks Task created with ID: %d\n", taskID)
 
-			// Создаем подзадачи для bend_works
+			// Создаем подзадачи
 			customFields := CustomTaskFields{
 				OrderNumber: data.BendWorks.Data["№ заказа"],
 				Customer:    data.BendWorks.Data["Заказчик"],
@@ -234,7 +238,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				Comment:     data.BendWorks.Data["Комментарий"],
 				Coating:     data.BendWorks.Data["Нанесение покрытий"],
 			}
-			subTaskID, err := AddTaskToParentId("bend_works_subtask", 149, data.BendWorks.GroupID, taskID, customFields)
+			subTaskID, err := AddTaskToParentId("bend_works", 149, data.BendWorks.GroupID, taskID, customFields)
 			if err != nil {
 				log.Printf("Error creating bend_works subtask: %v\n", err)
 				continue
@@ -242,6 +246,34 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			log.Printf("BendWorks Subtask created with ID: %d\n", subTaskID)
 		}
 
+		// Обработка PipeCutting
+		if data.PipeCutting != nil {
+			// Создаем задачу один раз
+			taskID, err := AddTaskToGroup("pipe_cutting", 149, data.PipeCutting.GroupID, 1046, 458)
+			if err != nil {
+				log.Printf("Error creating pipe_cutting task: %v\n", err)
+				continue
+			}
+			log.Printf("PipeCutting Task created with ID: %d\n", taskID)
+
+			// Создаем подзадачи
+			customFields := CustomTaskFields{
+				OrderNumber: data.PipeCutting.Data["№ заказа"],
+				Customer:    data.PipeCutting.Data["Заказчик"],
+				Manager:     data.PipeCutting.Data["Менеджер"],
+				Material:    data.PipeCutting.Data["Количество материала"],
+				Comment:     data.PipeCutting.Data["Комментарий"],
+				Coating:     data.PipeCutting.Data["Нанесение покрытий"],
+			}
+			subTaskID, err := AddTaskToParentId("pipe_cutting", 149, data.PipeCutting.GroupID, taskID, customFields)
+			if err != nil {
+				log.Printf("Error creating pipe_cutting subtask: %v\n", err)
+				continue
+			}
+			log.Printf("PipeCutting Subtask created with ID: %d\n", subTaskID)
+		}
+
+		// Обработка Production
 		if data.Production != nil {
 			checklist := []map[string]interface{}{}
 			for _, step := range strings.Fields(data.Production.Data["Производство"]) {
@@ -262,7 +294,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("File processed and products added successfully"))
+	w.Write([]byte("File processed and tasks added successfully"))
 }
 
 // Функция для сохранения docIDs в текстовый файл
