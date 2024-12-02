@@ -76,63 +76,63 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*	// Чтение продуктов из Excel файла
-		products, err := ReadXlsProductRows(fileName)
+	/*// Чтение продуктов из Excel файла
+	products, err := ReadXlsProductRows(fileName)
+	if err != nil {
+		log.Println("Error reading Excel file:", err)
+		http.Error(w, "Failed to process Excel file", http.StatusInternalServerError)
+		return
+	}*/
+
+	// Создаем массив для хранения ID товаров
+	/*var productIDs []int
+	var totalProductsPrice float64
+
+	// Добавление продуктов в Bitrix24
+	for _, product := range products {
+		productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
 		if err != nil {
-			log.Println("Error reading Excel file:", err)
-			http.Error(w, "Failed to process Excel file", http.StatusInternalServerError)
-			return
+			log.Printf("Error adding product %s: %v", product.Name, err)
+			continue
 		}
+		productIDs = append(productIDs, productID)
+		totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
+	}*/
 
-		// Создаем массив для хранения ID товаров
-		var productIDs []int
-		var totalProductsPrice float64
+	// После получения productIDs и products
+	/*var quantities []float64
+	var prices []float64
+	for _, product := range products {
+		quantities = append(quantities, product.Quantity)
+		prices = append(prices, product.Price)
+	}
 
-		// Добавление продуктов в Bitrix24
-		for _, product := range products {
-			productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
-			if err != nil {
-				log.Printf("Error adding product %s: %v", product.Name, err)
-				continue
-			}
-			productIDs = append(productIDs, productID)
-			totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
-		}
+	// Добавление товаров в сделку
+	err = AddProductsRowToDeal(dealID, productIDs, quantities, prices)
+	if err != nil {
+		log.Printf("Error adding product rows to deal: %v", err)
+		http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
+		return
+	}
 
-		// После получения productIDs и products
-		var quantities []float64
-		var prices []float64
-		for _, product := range products {
-			quantities = append(quantities, product.Quantity)
-			prices = append(prices, product.Price)
-		}
+	// Добавление документа в Bitrix24
+	docId, err := AddCatalogDocument(dealID, assignedById, totalProductsPrice)
+	if err != nil {
+		log.Printf("Error adding catalog document: %v", err)
+		http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
+		return
+	}
 
-		// Добавление товаров в сделку
-		err = AddProductsRowToDeal(dealID, productIDs, quantities, prices)
-		if err != nil {
-			log.Printf("Error adding product rows to deal: %v", err)
-			http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
-			return
-		}
+	// Добавляем docId в массив
+	docIDs = append(docIDs, docId)
 
-		// Добавление документа в Bitrix24
-		docId, err := AddCatalogDocument(dealID, assignedById, totalProductsPrice)
-		if err != nil {
-			log.Printf("Error adding catalog document: %v", err)
-			http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
-			return
-		}
+	if len(productIDs) != len(quantities) {
+		log.Println("Mismatched lengths: productIDs and quantities")
+		http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
+		return
+	}
 
-		// Добавляем docId в массив
-		docIDs = append(docIDs, docId)
-
-		if len(productIDs) != len(quantities) {
-			log.Println("Mismatched lengths: productIDs and quantities")
-			http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
-			return
-		}*/
-
-	/*for i, productId := range productIDs {
+	for i, productId := range productIDs {
 		quantity := quantities[i]
 
 		err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
@@ -141,18 +141,18 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
 			return
 		}
-	}*/
+	}
 
 	// Проведение документа
-	/*err = ConductDocumentId(docId)
+	err = ConductDocumentId(docId)
 	if err != nil {
 		log.Printf("Error conducting document: %v", err)
 		http.Error(w, "Failed to conduct document", http.StatusInternalServerError)
 		return
-	}*/
+	}
 
 	// Сохраняем docIDs в текстовый файл
-	/*err = saveDocIDsToFile("document_ids.txt", docIDs)
+	err = saveDocIDsToFile("document_ids.txt", docIDs)
 	if err != nil {
 		log.Printf("Error saving document IDs to file: %v", err)
 		http.Error(w, "Failed to save document IDs to file", http.StatusInternalServerError)
@@ -175,20 +175,15 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to read parsed JSON data", http.StatusInternalServerError)
 		return
 	}
-
-	// Выводим JSON для отладки
-	log.Printf("Raw JSON Data: %s\n", string(jsonData))
-
 	if err := json.Unmarshal(jsonData, &parsedData); err != nil {
 		log.Printf("Error unmarshalling JSON data: %v\n", err)
 		http.Error(w, "Failed to parse JSON data", http.StatusInternalServerError)
 		return
 	}
 
-	// Лимит итераций и флаг для выполнения AddTaskToGroup только один раз
+	// Лимит итераций
 	iterationLimit := 10
 	iterationCount := 0
-	isLaserWorksTaskCreated := false
 
 	// Обрабатываем каждый блок данных из JSON
 	for _, data := range parsedData {
@@ -197,13 +192,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		if data.LaserWorks != nil && !isLaserWorksTaskCreated {
+		if data.LaserWorks != nil {
 			taskID, err := AddTaskToGroup("laser_works", 149, data.LaserWorks.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating laser_works task: %v\n", err)
 				continue
 			}
-			isLaserWorksTaskCreated = true // Устанавливаем флаг
 			log.Printf("LaserWorks Task created with ID: %d\n", taskID)
 
 			// Создаем подзадачи для laser_works
@@ -215,7 +209,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				Comment:     data.LaserWorks.Data["Комментарий"],
 				Coating:     data.LaserWorks.Data["Нанесение покрытий"],
 			}
-			subTaskID, err := AddTaskToParentId("laser_works", 149, data.LaserWorks.GroupID, taskID, customFields)
+			subTaskID, err := AddTaskToParentId("laser_works_subtask", 149, data.LaserWorks.GroupID, taskID, customFields)
 			if err != nil {
 				log.Printf("Error creating laser_works subtask: %v\n", err)
 				continue
@@ -240,7 +234,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				Comment:     data.BendWorks.Data["Комментарий"],
 				Coating:     data.BendWorks.Data["Нанесение покрытий"],
 			}
-			subTaskID, err := AddTaskToParentId("bend_works", 149, data.BendWorks.GroupID, taskID, customFields)
+			subTaskID, err := AddTaskToParentId("bend_works_subtask", 149, data.BendWorks.GroupID, taskID, customFields)
 			if err != nil {
 				log.Printf("Error creating bend_works subtask: %v\n", err)
 				continue
