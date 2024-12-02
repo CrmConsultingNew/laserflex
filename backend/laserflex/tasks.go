@@ -7,8 +7,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
+// Структуры для задачи
 type Task struct {
 	Title         string   `json:"TITLE"`
 	ResponsibleID int      `json:"RESPONSIBLE_ID"`
@@ -18,16 +21,16 @@ type Task struct {
 
 // Структура для пользовательских полей задачи
 type CustomTaskFields struct {
+	Quantity          string `json:"UF_AUTO_552243496167,omitempty"` // Кол-во
+	TemporaryOrderSum string `json:"UF_AUTO_555642596740,omitempty"` // Временная сумма заказа
 	OrderNumber       string `json:"UF_AUTO_303168834495,omitempty"` // № заказа
 	Customer          string `json:"UF_AUTO_876283676967,omitempty"` // Заказчик
 	Manager           string `json:"UF_AUTO_794809224848,omitempty"` // Менеджер
 	Material          string `json:"UF_AUTO_468857876599,omitempty"` // Материал
-	Comment           string `json:"UF_AUTO_497907774817,omitempty"` // Комментарий
-	ProductionTask    string `json:"UF_AUTO_433735177517,omitempty"` // Произв. Задача
 	Bend              string `json:"UF_AUTO_726724682983,omitempty"` // Гибка
+	ProductionTask    string `json:"UF_AUTO_433735177517,omitempty"` // Произв. Задача
+	Comment           string `json:"UF_AUTO_497907774817,omitempty"` // Комментарий
 	Coating           string `json:"UF_AUTO_512869473370,omitempty"` // Покрытие
-	TemporaryOrderSum string `json:"UF_AUTO_555642596740,omitempty"` // Временная сумма заказа
-	Quantity          string `json:"UF_AUTO_552243496167,omitempty"` // Кол-во
 }
 
 // Структура для создания задачи с полями
@@ -41,24 +44,33 @@ type TaskWithParent struct {
 
 // Структура для общего тела запроса
 type TaskRequest struct {
-	Fields interface{} `json:"fields"`
+	Fields map[string]interface{} `json:"fields"`
 }
 
 type TaskResponse struct {
-	Result int `json:"result"`
+	Result struct {
+		Task struct {
+			ID int `json:"id"`
+		} `json:"task"`
+	} `json:"result"`
 }
 
-// AddTaskToGroup создает задачу в группе (без привязки к PARENT_ID)
-func AddTaskToGroup(title string, responsibleID, groupID int) (int, error) {
+// AddTaskToGroup создает задачу и возвращает ID созданной задачи
+func AddTaskToGroup(title string, responsibleID, groupID, processTypeID, elementID int) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
 
+	// Генерация ссылки смарт-процесса
+	smartProcessLink := GenerateSmartProcessLink(processTypeID, elementID)
+
+	// Формирование тела запроса
 	requestBody := TaskRequest{
-		Fields: Task{
-			Title:         title,
-			ResponsibleID: responsibleID,
-			GroupID:       groupID,
+		Fields: map[string]interface{}{
+			"TITLE":          title,
+			"RESPONSIBLE_ID": responsibleID,
+			"GROUP_ID":       groupID,
+			"UF_CRM_TASK":    []string{smartProcessLink},
 		},
 	}
 
@@ -89,13 +101,28 @@ func AddTaskToGroup(title string, responsibleID, groupID int) (int, error) {
 		return 0, fmt.Errorf("error unmarshalling response: %v", err)
 	}
 
-	if response.Result == 0 {
+	taskID := response.Result.Task.ID
+	if taskID == 0 {
 		return 0, fmt.Errorf("failed to create task, response: %s", string(responseData))
 	}
 
-	log.Println("Task created in group with ID:", response.Result)
-	return response.Result, nil
+	log.Printf("Task created with ID: %d\n", taskID)
+	return taskID, nil
 }
+
+// GenerateSmartProcessLink генерирует идентификатор смарт-процесса
+func GenerateSmartProcessLink(processTypeID, elementID int) string {
+	// Преобразуем идентификатор типа смарт-процесса в шестнадцатеричную систему
+	hexType := strings.ToLower(strconv.FormatInt(int64(processTypeID), 16))
+
+	// Формируем строку привязки
+	return fmt.Sprintf("T%s_%d", hexType, elementID)
+}
+
+// ID группы 1 - Лазерные работы
+// ID группы 11 - Труборез
+// ID группы 10 - Гибочные работы
+// ID группы 2 - Производство
 
 // AddTaskToParentId создает подзадачу с привязкой к PARENT_ID и пользовательскими полями
 func AddTaskToParentId(title string, responsibleID, groupID, parentID int, customFields CustomTaskFields) (int, error) {
@@ -157,68 +184,70 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 	}
 
 	// Проверяем успешность создания подзадачи
-	if response.Result == 0 {
+	if response.Result.Task.ID == 0 {
 		return 0, fmt.Errorf("failed to create subtask, response: %s", string(responseData))
 	}
 
 	log.Println("Subtask created with ID:", response.Result)
-	return response.Result, nil
+	return response.Result.Task.ID, nil
 }
 
-func LaserProductsAddToDeal() {
-	// Предварительно добавляем остатки по товарам на складах.
-	// Как нам получить ID товара? и добавить его в задачу. (Вероятно новым вебхуком забрать все товары с их ID)
-	// Тут добавляем товары в задачу. Название и Цена из КП?
+// AddTaskWithChecklist создает задачу с чек-листом и возвращает ID созданной задачи
+func AddTaskWithChecklist(title string, responsibleID int, processTypeID, elementID int, checklist []map[string]interface{}) (int, error) {
+	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
+	bitrixMethod := "tasks.task.add"
+	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
 
-}
+	// Генерация ссылки смарт-процесса
+	smartProcessLink := GenerateSmartProcessLink(processTypeID, elementID)
 
-func LaserAddWarehouseDocument() {
-	// нужно создать документ S на оприходование
+	// Формирование тела запроса
+	requestBody := map[string]interface{}{
+		"fields": map[string]interface{}{
+			"TITLE":          title,
+			"RESPONSIBLE_ID": responsibleID,
+			"UF_CRM_TASK":    []string{smartProcessLink},
+			"checklist":      checklist, // Добавление чек-листа
+		},
+	}
 
-	// создать документ - catalog.document.add . Как добавить в вебхук?
-	// получение полей складского учета - catalog.document.getFields
-	// возвращает типы - catalog.enum.getStoreDocumentTypes
-	//(A – Приход товара на склад;
-	//S – Оприходование товара;
-	//M – Перемещение товара между складами;
-	//R – Возврат товара;
-	//D – Списание товара.)
-}
+	// Сериализация тела запроса
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return 0, fmt.Errorf("error marshalling request body: %v", err)
+	}
 
-func AddMainTasks() {
+	// Создание HTTP-запроса
+	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return 0, fmt.Errorf("error creating HTTP request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
 
-}
+	// Отправка запроса
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("error sending HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
 
-func LaserTasksAdd(entityId, smartProcessId, elementId string) {
+	// Чтение ответа
+	responseData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("error reading response body: %v", err)
+	}
 
-	// получить все пользовательские поля в задаче (названия и свойства) - tasks.task.getFields. Ищем примерно это - UF_AUTO_584432783202. Добавляем в fields.
-	// Тут отправляем вебхук - https://bitrix.laser-flex.ru/rest/149/64ccuxau3kqtkfls/task.item.userfield.getfields.json
-	// и забираем ответ (значения полей пользовательских)
+	// Разбор ответа
+	var response TaskResponse
+	if err := json.Unmarshal(responseData, &response); err != nil {
+		return 0, fmt.Errorf("error unmarshalling response: %v", err)
+	}
 
-	//task.item.add - Привязка к смарту?
-	//tasks.task.add - Привязка к сделке?
+	taskID := response.Result.Task.ID
+	if taskID == 0 {
+		return 0, fmt.Errorf("failed to create task, response: %s", string(responseData))
+	}
 
-	// Создаем основные задачи + Подзадачи
-
-	// ID группы 1 - Лазерные работы
-	// ID группы 11 - Труборез
-	// ID группы 10 - Гибочные работы
-	// ID группы 2 - Производство
-	// ID группы 12 - Нанесение покрытий
-
-	// RETURN urlCreateTask := fmt.Sprintf("https://bitrix.laser-flex.ru/rest/149/ycz7102vaerygxvb/task.item.add.json?fields[TITLE]=%s&fields[RESPONSIBLE_ID]=%s&fields[GROUP_ID]=%s]")
-	// Тут должны вернуть ID созданной задачи.
-
-	// В подзадачах указываем PARENT_ID, т.е. при создании задачи мы должны вернуть ID из битрикс. Передаем в Вебхук
-	// RETURN urlCreateTaskWithParent := fmt.Sprintf("https://bitrix.laser-flex.ru/rest/149/ycz7102vaerygxvb/task.item.add.json?fields[TITLE]=%s&fields[RESPONSIBLE_ID]=%s&fields[GROUP_ID]=%s&PARENT_ID=%s]")
-	// Тут тоже должны вернуть ID созданной подзадачи.
-
-	//Привязка задачи к смарт-процессу. Читаем комменты по ссылке - https://dev.1c-bitrix.ru/rest_help/tasks/task/tasks/tasks_task_getFields.php
-	// Вот функция которая преобразует в 16ричное значение - func convertEntityTypeIdToHex(entityTypeId int, elementId int) string {
-	//	// Преобразуем entityTypeId в шестнадцатеричный формат
-	//	hexEntityTypeId := fmt.Sprintf("%x", entityTypeId)
-	//	// Формируем финальную строку с префиксом T и добавляем elementId
-	//	return fmt.Sprintf("T%s_%d", hexEntityTypeId, elementId)
-	//}
-
+	log.Printf("Task with checklist created with ID: %d\n", taskID)
+	return taskID, nil
 }

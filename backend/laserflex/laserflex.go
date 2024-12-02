@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +159,100 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Product rows and catalog document added successfully for deal %s", dealID)
+	productionEngineerId, err := GetProductionEngineerIdByDeal(dealID)
+	if err != nil {
+		log.Printf("Error getting production engineer ID: %v", err)
+	}
+
+	// Конвертируем файл Excel в JSON
+	StartJsonConverterFromExcel(fileName)
+
+	// Читаем сгенерированный JSON
+	var parsedData []ParsedData
+	jsonData, err := os.ReadFile("output.json")
+	if err != nil {
+		log.Printf("Error reading JSON file: %v\n", err)
+		http.Error(w, "Failed to read parsed JSON data", http.StatusInternalServerError)
+		return
+	}
+	if err := json.Unmarshal(jsonData, &parsedData); err != nil {
+		log.Printf("Error unmarshalling JSON data: %v\n", err)
+		http.Error(w, "Failed to parse JSON data", http.StatusInternalServerError)
+		return
+	}
+
+	// Обрабатываем каждый блок данных из JSON
+	for _, data := range parsedData {
+		if data.LaserWorks != nil {
+			taskID, err := AddTaskToGroup("laser_works", productionEngineerId, data.LaserWorks.GroupID, 1046, 458)
+			if err != nil {
+				log.Printf("Error creating laser_works task: %v\n", err)
+				continue
+			}
+			log.Printf("LaserWorks Task created with ID: %d\n", taskID)
+
+			// Создаем подзадачи для laser_works
+			customFields := CustomTaskFields{
+				OrderNumber:       data.LaserWorks.Data["№ заказа"],
+				Customer:          data.LaserWorks.Data["Заказчик"],
+				Manager:           data.LaserWorks.Data["Менеджер"],
+				Material:          data.LaserWorks.Data["Количество материала"],
+				Comment:           data.LaserWorks.Data["Комментарий"],
+				Coating:           data.LaserWorks.Data["Нанесение покрытий"],
+				TemporaryOrderSum: "", // Указать, если есть
+				Quantity:          "", // Указать, если есть
+			}
+			subTaskID, err := AddTaskToParentId("laser_works", productionEngineerId, data.LaserWorks.GroupID, taskID, customFields)
+			if err != nil {
+				log.Printf("Error creating laser_works subtask: %v\n", err)
+				continue
+			}
+			log.Printf("LaserWorks Subtask created with ID: %d\n", subTaskID)
+		}
+
+		if data.BendWorks != nil {
+			taskID, err := AddTaskToGroup("bend_works", productionEngineerId, data.BendWorks.GroupID, 1046, 458)
+			if err != nil {
+				log.Printf("Error creating bend_works task: %v\n", err)
+				continue
+			}
+			log.Printf("BendWorks Task created with ID: %d\n", taskID)
+
+			// Создаем подзадачи для bend_works
+			customFields := CustomTaskFields{
+				OrderNumber:       data.BendWorks.Data["№ заказа"],
+				Customer:          data.BendWorks.Data["Заказчик"],
+				Manager:           data.BendWorks.Data["Менеджер"],
+				Material:          data.BendWorks.Data["Количество материала"],
+				Comment:           data.BendWorks.Data["Комментарий"],
+				Coating:           data.BendWorks.Data["Нанесение покрытий"],
+				TemporaryOrderSum: "", // Указать, если есть
+				Quantity:          "", // Указать, если есть
+			}
+			subTaskID, err := AddTaskToParentId("bend_works", productionEngineerId, data.BendWorks.GroupID, taskID, customFields)
+			if err != nil {
+				log.Printf("Error creating bend_works subtask: %v\n", err)
+				continue
+			}
+			log.Printf("BendWorks Subtask created with ID: %d\n", subTaskID)
+		}
+
+		if data.Production != nil {
+			checklist := []map[string]interface{}{}
+			for _, step := range strings.Fields(data.Production.Data["Производство"]) {
+				checklist = append(checklist, map[string]interface{}{
+					"title": step,
+				})
+			}
+
+			taskID, err := AddTaskWithChecklist("production", productionEngineerId, 1046, 458, checklist)
+			if err != nil {
+				log.Printf("Error creating production task: %v\n", err)
+				continue
+			}
+			log.Printf("Production Task with checklist created with ID: %d\n", taskID)
+		}
+	}
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File processed and products added successfully"))
