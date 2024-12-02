@@ -175,15 +175,20 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to read parsed JSON data", http.StatusInternalServerError)
 		return
 	}
+
+	// Выводим JSON для отладки
+	log.Printf("Raw JSON Data: %s\n", string(jsonData))
+
 	if err := json.Unmarshal(jsonData, &parsedData); err != nil {
 		log.Printf("Error unmarshalling JSON data: %v\n", err)
 		http.Error(w, "Failed to parse JSON data", http.StatusInternalServerError)
 		return
 	}
 
-	// Лимит итераций
+	// Лимит итераций и флаг для выполнения AddTaskToGroup только один раз
 	iterationLimit := 10
 	iterationCount := 0
+	isLaserWorksTaskCreated := false
 
 	// Обрабатываем каждый блок данных из JSON
 	for _, data := range parsedData {
@@ -192,12 +197,13 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		if data.LaserWorks != nil {
+		if data.LaserWorks != nil && !isLaserWorksTaskCreated {
 			taskID, err := AddTaskToGroup("laser_works", 149, data.LaserWorks.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating laser_works task: %v\n", err)
 				continue
 			}
+			isLaserWorksTaskCreated = true // Устанавливаем флаг
 			log.Printf("LaserWorks Task created with ID: %d\n", taskID)
 
 			// Создаем подзадачи для laser_works
