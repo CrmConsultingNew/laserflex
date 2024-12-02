@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -164,10 +163,10 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error getting production engineer ID: %v", err)
 	}*/
 
-	// Конвертируем файл Excel в JSON
+	// Конвертация Excel в JSON
 	StartJsonConverterFromExcel(fileName)
 
-	// Читаем сгенерированный JSON
+	// Чтение JSON данных
 	var parsedData []ParsedData
 	jsonData, err := os.ReadFile("output.json")
 	if err != nil {
@@ -181,120 +180,68 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Инициализация ID задач
+	var laserWorksId, bendWorksId, pipeCuttingId, productionId int
+
 	// Лимит итераций
 	iterationLimit := 10
 	iterationCount := 0
 
-	// Обрабатываем каждый блок данных из JSON
+	// Обработка JSON данных
 	for _, data := range parsedData {
 		if iterationCount >= iterationLimit {
 			log.Println("Reached iteration limit of 10, stopping further processing.")
 			break
 		}
 
-		// Обработка LaserWorks
-		if data.LaserWorks != nil {
-			// Создаем задачу один раз
-			taskID, err := AddTaskToGroup("laser_works", 149, data.LaserWorks.GroupID, 1046, 458)
+		// LaserWorks
+		if data.LaserWorks != nil && laserWorksId == 0 {
+			laserWorksId, err = AddTaskToGroup("laser_works", 149, data.LaserWorks.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating laser_works task: %v\n", err)
 				continue
 			}
-			log.Printf("LaserWorks Task created with ID: %d\n", taskID)
-
-			// Создаем подзадачи
-			customFields := CustomTaskFields{
-				OrderNumber: data.LaserWorks.Data["№ заказа"],
-				Customer:    data.LaserWorks.Data["Заказчик"],
-				Manager:     data.LaserWorks.Data["Менеджер"],
-				Material:    data.LaserWorks.Data["Количество материала"],
-				Comment:     data.LaserWorks.Data["Комментарий"],
-				Coating:     data.LaserWorks.Data["Нанесение покрытий"],
-			}
-			subTaskID, err := AddTaskToParentId("laser_works", 149, data.LaserWorks.GroupID, taskID, customFields)
-			if err != nil {
-				log.Printf("Error creating laser_works subtask: %v\n", err)
-				continue
-			}
-			log.Printf("LaserWorks Subtask created with ID: %d\n", subTaskID)
+			log.Printf("LaserWorks Task created with ID: %d\n", laserWorksId)
 		}
 
-		// Обработка BendWorks
-		if data.BendWorks != nil {
-			// Создаем задачу один раз
-			taskID, err := AddTaskToGroup("bend_works", 149, data.BendWorks.GroupID, 1046, 458)
+		// BendWorks
+		if data.BendWorks != nil && bendWorksId == 0 {
+			bendWorksId, err = AddTaskToGroup("bend_works", 149, data.BendWorks.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating bend_works task: %v\n", err)
 				continue
 			}
-			log.Printf("BendWorks Task created with ID: %d\n", taskID)
-
-			// Создаем подзадачи
-			customFields := CustomTaskFields{
-				OrderNumber: data.BendWorks.Data["№ заказа"],
-				Customer:    data.BendWorks.Data["Заказчик"],
-				Manager:     data.BendWorks.Data["Менеджер"],
-				Material:    data.BendWorks.Data["Количество материала"],
-				Comment:     data.BendWorks.Data["Комментарий"],
-				Coating:     data.BendWorks.Data["Нанесение покрытий"],
-			}
-			subTaskID, err := AddTaskToParentId("bend_works", 149, data.BendWorks.GroupID, taskID, customFields)
-			if err != nil {
-				log.Printf("Error creating bend_works subtask: %v\n", err)
-				continue
-			}
-			log.Printf("BendWorks Subtask created with ID: %d\n", subTaskID)
+			log.Printf("BendWorks Task created with ID: %d\n", bendWorksId)
 		}
 
-		// Обработка PipeCutting
-		if data.PipeCutting != nil {
-			// Создаем задачу один раз
-			taskID, err := AddTaskToGroup("pipe_cutting", 149, data.PipeCutting.GroupID, 1046, 458)
+		// PipeCutting
+		if data.PipeCutting != nil && pipeCuttingId == 0 {
+			pipeCuttingId, err = AddTaskToGroup("pipe_cutting", 149, data.PipeCutting.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating pipe_cutting task: %v\n", err)
 				continue
 			}
-			log.Printf("PipeCutting Task created with ID: %d\n", taskID)
-
-			// Создаем подзадачи
-			customFields := CustomTaskFields{
-				OrderNumber: data.PipeCutting.Data["№ заказа"],
-				Customer:    data.PipeCutting.Data["Заказчик"],
-				Manager:     data.PipeCutting.Data["Менеджер"],
-				Material:    data.PipeCutting.Data["Количество материала"],
-				Comment:     data.PipeCutting.Data["Комментарий"],
-				Coating:     data.PipeCutting.Data["Нанесение покрытий"],
-			}
-			subTaskID, err := AddTaskToParentId("pipe_cutting", 149, data.PipeCutting.GroupID, taskID, customFields)
-			if err != nil {
-				log.Printf("Error creating pipe_cutting subtask: %v\n", err)
-				continue
-			}
-			log.Printf("PipeCutting Subtask created with ID: %d\n", subTaskID)
+			log.Printf("PipeCutting Task created with ID: %d\n", pipeCuttingId)
 		}
 
-		// Обработка Production
-		if data.Production != nil {
-			checklist := []map[string]interface{}{}
-			for _, step := range strings.Fields(data.Production.Data["Производство"]) {
-				checklist = append(checklist, map[string]interface{}{
-					"title": step,
-				})
-			}
-
-			taskID, err := AddTaskWithChecklist("production", 149, 1046, 458, checklist)
+		// Production
+		if data.Production != nil && productionId == 0 {
+			productionId, err = AddTaskToGroup("production", 149, data.Production.GroupID, 1046, 458)
 			if err != nil {
 				log.Printf("Error creating production task: %v\n", err)
 				continue
 			}
-			log.Printf("Production Task with checklist created with ID: %d\n", taskID)
+			log.Printf("Production Task created with ID: %d\n", productionId)
 		}
 
 		iterationCount++
 	}
 
+	// Вывод всех ID задач в консоль
+	log.Printf("Task IDs: laserWorksId=%d, bendWorksId=%d, pipeCuttingId=%d, productionId=%d\n", laserWorksId, bendWorksId, pipeCuttingId, productionId)
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("File processed and tasks added successfully"))
+	w.Write([]byte("File processed, tasks added successfully"))
 }
 
 // Функция для сохранения docIDs в текстовый файл
