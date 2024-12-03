@@ -76,94 +76,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*// Чтение продуктов из Excel файла
-	products, err := ReadXlsProductRows(fileName)
-	if err != nil {
-		log.Println("Error reading Excel file:", err)
-		http.Error(w, "Failed to process Excel file", http.StatusInternalServerError)
-		return
-	}*/
-
-	// Создаем массив для хранения ID товаров
-	/*var productIDs []int
-	var totalProductsPrice float64
-
-	// Добавление продуктов в Bitrix24
-	for _, product := range products {
-		productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
-		if err != nil {
-			log.Printf("Error adding product %s: %v", product.Name, err)
-			continue
-		}
-		productIDs = append(productIDs, productID)
-		totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
-	}*/
-
-	// После получения productIDs и products
-	/*var quantities []float64
-	var prices []float64
-	for _, product := range products {
-		quantities = append(quantities, product.Quantity)
-		prices = append(prices, product.Price)
-	}
-
-	// Добавление товаров в сделку
-	err = AddProductsRowToDeal(dealID, productIDs, quantities, prices)
-	if err != nil {
-		log.Printf("Error adding product rows to deal: %v", err)
-		http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
-		return
-	}
-
-	// Добавление документа в Bitrix24
-	docId, err := AddCatalogDocument(dealID, assignedById, totalProductsPrice)
-	if err != nil {
-		log.Printf("Error adding catalog document: %v", err)
-		http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
-		return
-	}
-
-	// Добавляем docId в массив
-	docIDs = append(docIDs, docId)
-
-	if len(productIDs) != len(quantities) {
-		log.Println("Mismatched lengths: productIDs and quantities")
-		http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
-		return
-	}
-
-	for i, productId := range productIDs {
-		quantity := quantities[i]
-
-		err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
-		if err != nil {
-			log.Printf("Error adding catalog document with element: %v", err)
-			http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	// Проведение документа
-	err = ConductDocumentId(docId)
-	if err != nil {
-		log.Printf("Error conducting document: %v", err)
-		http.Error(w, "Failed to conduct document", http.StatusInternalServerError)
-		return
-	}
-
-	// Сохраняем docIDs в текстовый файл
-	err = saveDocIDsToFile("document_ids.txt", docIDs)
-	if err != nil {
-		log.Printf("Error saving document IDs to file: %v", err)
-		http.Error(w, "Failed to save document IDs to file", http.StatusInternalServerError)
-		return
-	}*/
-
-	/*productionEngineerId, err := GetProductionEngineerIdByDeal(dealID)
-	if err != nil {
-		log.Printf("Error getting production engineer ID: %v", err)
-	}*/
-
 	// Конвертация Excel в JSON
 	StartJsonConverterFromExcel(fileName)
 
@@ -181,14 +93,8 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var laserWorksId, bendWorksId, pipeCuttingId, productionId int
-	iterationLimit := 10
-	iterationCount := 0
 
 	for _, data := range parsedData {
-		if iterationCount >= iterationLimit {
-			log.Println("Reached iteration limit of 10, stopping further processing.")
-			break
-		}
 
 		if data.LaserWorks != nil && laserWorksId == 0 {
 			laserWorksId, err = AddTaskToGroup("laser_works", 149, data.LaserWorks.GroupID, 1046, 458)
@@ -226,7 +132,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Production Task created with ID: %d\n", productionId)
 		}
 
-		iterationCount++
 	}
 
 	// Добавление подзадач к каждой группе
@@ -311,6 +216,96 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File processed, tasks and subtasks added successfully"))
 }
+
+// вставить после downloadFile
+
+/*// Чтение продуктов из Excel файла
+products, err := ReadXlsProductRows(fileName)
+if err != nil {
+	log.Println("Error reading Excel file:", err)
+	http.Error(w, "Failed to process Excel file", http.StatusInternalServerError)
+	return
+}*/
+
+// Создаем массив для хранения ID товаров
+/*var productIDs []int
+var totalProductsPrice float64
+
+// Добавление продуктов в Bitrix24
+for _, product := range products {
+	productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
+	if err != nil {
+		log.Printf("Error adding product %s: %v", product.Name, err)
+		continue
+	}
+	productIDs = append(productIDs, productID)
+	totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
+}*/
+
+// После получения productIDs и products
+/*var quantities []float64
+var prices []float64
+for _, product := range products {
+	quantities = append(quantities, product.Quantity)
+	prices = append(prices, product.Price)
+}
+
+// Добавление товаров в сделку
+err = AddProductsRowToDeal(dealID, productIDs, quantities, prices)
+if err != nil {
+	log.Printf("Error adding product rows to deal: %v", err)
+	http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
+	return
+}
+
+// Добавление документа в Bitrix24
+docId, err := AddCatalogDocument(dealID, assignedById, totalProductsPrice)
+if err != nil {
+	log.Printf("Error adding catalog document: %v", err)
+	http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
+	return
+}
+
+// Добавляем docId в массив
+docIDs = append(docIDs, docId)
+
+if len(productIDs) != len(quantities) {
+	log.Println("Mismatched lengths: productIDs and quantities")
+	http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
+	return
+}
+
+for i, productId := range productIDs {
+	quantity := quantities[i]
+
+	err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
+	if err != nil {
+		log.Printf("Error adding catalog document with element: %v", err)
+		http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
+		return
+	}
+}
+
+// Проведение документа
+err = ConductDocumentId(docId)
+if err != nil {
+	log.Printf("Error conducting document: %v", err)
+	http.Error(w, "Failed to conduct document", http.StatusInternalServerError)
+	return
+}
+
+// Сохраняем docIDs в текстовый файл
+err = saveDocIDsToFile("document_ids.txt", docIDs)
+if err != nil {
+	log.Printf("Error saving document IDs to file: %v", err)
+	http.Error(w, "Failed to save document IDs to file", http.StatusInternalServerError)
+	return
+}*/
+
+/*productionEngineerId, err := GetProductionEngineerIdByDeal(dealID)
+if err != nil {
+	log.Printf("Error getting production engineer ID: %v", err)
+}*/
 
 // Функция для сохранения docIDs в текстовый файл
 func saveDocIDsToFile(filename string, docIDs []int) error {
