@@ -161,7 +161,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				Quantity:    data.BendWorks.Data["Количество материала"],
 				Comment:     data.BendWorks.Data["Комментарий"],
 				Coating:     data.BendWorks.Data["Нанесение покрытий"],
-				Material:    data.BendWorks.Data["Труборез"],
+				Material:    data.BendWorks.Data["Гибочные работы"],
 			}
 			_, err = AddTaskToParentId("bend_works_subtask", 149, data.BendWorks.GroupID, bendWorksId, customFields)
 			if err != nil {
@@ -178,7 +178,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				Quantity:    data.LaserWorks.Data["Количество материала"],
 				Comment:     data.PipeCutting.Data["Комментарий"],
 				Coating:     data.PipeCutting.Data["Нанесение покрытий"],
-				Material:    data.PipeCutting.Data["Гибочные работы"],
+				Material:    data.PipeCutting.Data["Труборез"],
 			}
 			_, err = AddTaskToParentId("pipe_cutting_subtask", 149, data.PipeCutting.GroupID, pipeCuttingId, customFields)
 			if err != nil {
