@@ -19,14 +19,13 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 	fileID := queryParams.Get("file_id")
 	smartProcessIDStr := queryParams.Get("smartProcessID")
-	engineerNotConverted := queryParams.Get("engineer_id")
-	engineerID, err := strconv.Atoi(engineerNotConverted)
+	engineerIDStr := queryParams.Get("engineer_id")
+	engineerID, err := strconv.Atoi(engineerIDStr)
 	if err != nil {
-		log.Printf("Error converting engineer_id to int: %v\n", err)
-		http.Error(w, "Invalid engineer_id parameter", http.StatusBadRequest)
+		log.Printf("Error converting engineerID to int: %v\n", err)
+		http.Error(w, "Invalid engineerID parameter", http.StatusBadRequest)
 		return
 	}
-
 	log.Printf("Engineer ID: %v", engineerID)
 
 	if fileID == "" {
@@ -60,7 +59,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Обрабатываем задачи
-	taskIDLaserWorks, err := processLaserWorks(fileName, engineerID, smartProcessID)
+	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID, engineerID)
 	if err != nil {
 		log.Printf("Error processing Laser Works: %v\n", err)
 		http.Error(w, "Failed to process Laser Works", http.StatusInternalServerError)
@@ -68,7 +67,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("Laser Works Task ID: %d\n", taskIDLaserWorks)
 
-	taskIDBendWorks, err := processBendWorks(fileName, engineerID, smartProcessID)
+	taskIDBendWorks, err := processBendWorks(fileName, smartProcessID, engineerID)
 	if err != nil {
 		log.Printf("Error processing Bend Works: %v\n", err)
 		http.Error(w, "Failed to process Bend Works", http.StatusInternalServerError)
@@ -76,7 +75,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("Bend Works Task ID: %d\n", taskIDBendWorks)
 
-	taskIDPipeCutting, err := processPipeCutting(fileName, engineerID, smartProcessID)
+	taskIDPipeCutting, err := processPipeCutting(fileName, smartProcessID, engineerID)
 	if err != nil {
 		log.Printf("Error processing Pipe Cutting: %v\n", err)
 		http.Error(w, "Failed to process Pipe Cutting", http.StatusInternalServerError)
@@ -89,22 +88,22 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // processLaserWorks обрабатывает столбец "Лазерные работы"
-func processLaserWorks(fileName string, engineerID int, smartProcessID int) (int, error) {
-	return processTask(fileName, engineerID, smartProcessID, "Лазерные работы", 1)
+func processLaserWorks(fileName string, smartProcessID, engineerID int) (int, error) {
+	return processTask(fileName, smartProcessID, engineerID, "Лазерные работы", 1)
 }
 
 // processBendWorks обрабатывает столбец "Гибочные работы"
-func processBendWorks(fileName string, engineerID int, smartProcessID int) (int, error) {
-	return processTask(fileName, engineerID, smartProcessID, "Гибочные работы", 10)
+func processBendWorks(fileName string, smartProcessID, engineerID int) (int, error) {
+	return processTask(fileName, smartProcessID, engineerID, "Гибочные работы", 10)
 }
 
 // processPipeCutting обрабатывает столбец "Труборез"
-func processPipeCutting(fileName string, engineerID int, smartProcessID int) (int, error) {
-	return processTask(fileName, engineerID, smartProcessID, "Труборез", 11)
+func processPipeCutting(fileName string, smartProcessID, engineerID int) (int, error) {
+	return processTask(fileName, smartProcessID, engineerID, "Труборез", 11)
 }
 
 // processTask универсальная функция для обработки задач
-func processTask(fileName string, engineerID int, smartProcessID int, taskType string, groupID int) (int, error) {
+func processTask(fileName string, smartProcessID, engineerID int, taskType string, groupID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
@@ -183,7 +182,7 @@ func processTask(fileName string, engineerID int, smartProcessID int, taskType s
 		}
 
 		subTaskTitle := fmt.Sprintf("%s подзадача: %s", taskType, row[headers[taskType]])
-		_, err := AddTaskToParentId(subTaskTitle, 149, groupID, taskID, customFields)
+		_, err := AddTaskToParentId(subTaskTitle, engineerID, groupID, taskID, customFields)
 		if err != nil {
 			log.Printf("Error creating %s subtask: %v\n", taskType, err)
 			continue
