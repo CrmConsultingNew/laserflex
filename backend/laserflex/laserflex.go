@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -54,70 +53,30 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Парсим Excel файл
-	taskIDs := map[string]int{} // Для хранения ID задач
-	excelData, err := parseExcelFile(fileName)
+	// Обрабатываем задачи Лазерные работы
+	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID)
 	if err != nil {
-		log.Printf("Error parsing Excel file: %v\n", err)
-		http.Error(w, "Failed to parse Excel file", http.StatusInternalServerError)
+		log.Printf("Error processing Laser Works: %v\n", err)
+		http.Error(w, "Failed to process Laser Works", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Excel file data: %v", excelData)
-
-	// Создаем задачи для каждой группы
-	for taskType, taskData := range excelData {
-		if len(taskData.Rows) > 0 { // Если есть данные в соответствующем столбце
-			taskID, err := AddTaskToGroup(taskType, 149, taskData.GroupID, 1046, smartProcessID)
-			if err != nil {
-				log.Printf("Error creating task for %s: %v\n", taskType, err)
-				continue
-			}
-			log.Printf("%s Task created with ID: %d\n", taskType, taskID)
-			taskIDs[taskType] = taskID
-
-			// Создаем подзадачи
-			for _, row := range taskData.Rows {
-				customFields := CustomTaskFields{
-					OrderNumber: row["№ заказа"],
-					Customer:    row["Заказчик"],
-					Manager:     row["Менеджер"],
-					Quantity:    row["Количество материала"],
-					Comment:     row["Комментарий"],
-					Coating:     row["Нанесение покрытий"],
-					Material:    row[taskType],
-				}
-				subTaskTitle := fmt.Sprintf("%s подзадача: %s", taskType, row[taskType])
-				_, err := AddTaskToParentId(subTaskTitle, 149, taskData.GroupID, taskID, customFields)
-				if err != nil {
-					log.Printf("Error creating subtask for %s: %v\n", taskType, err)
-					continue
-				}
-			}
-		}
-	}
-
-	log.Println("All tasks and subtasks processed successfully")
+	log.Printf("Laser Works Task ID: %d\n", taskIDLaserWorks)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("File processed, tasks and subtasks added successfully"))
+	w.Write([]byte("File processed successfully"))
 }
 
-// Структура для хранения данных из Excel
-type TaskData struct {
-	GroupID int                 // ID группы (лазерные, труборез и т.д.)
-	Rows    []map[string]string // Данные строк из Excel
-}
-
-func parseExcelFile(fileName string) (map[string]*TaskData, error) {
+// processLaserWorks обрабатывает столбец "Лазерные работы" из Excel
+func processLaserWorks(fileName string, smartProcessID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
-		return nil, fmt.Errorf("error opening file: %v", err)
+		return 0, fmt.Errorf("error opening file: %v", err)
 	}
 	defer f.Close()
 
 	rows, err := f.GetRows("Реестр")
 	if err != nil {
-		return nil, fmt.Errorf("error reading rows: %v", err)
+		return 0, fmt.Errorf("error reading rows: %v", err)
 	}
 
 	// Определяем индексы заголовков
@@ -127,55 +86,74 @@ func parseExcelFile(fileName string) (map[string]*TaskData, error) {
 		"Менеджер":             -1,
 		"Количество материала": -1,
 		"Лазерные работы":      -1,
-		"Труборез":             -1,
-		"Гибочные работы":      -1,
-		"Производство":         -1,
 		"Нанесение покрытий":   -1,
 		"Комментарий":          -1,
 	}
 
+	// Поиск заголовков
 	for i, cell := range rows[0] {
 		for header := range headers {
-			if strings.Contains(cell, header) {
+			if cell == header {
 				headers[header] = i
 				break
 			}
 		}
 	}
 
-	// Проверяем наличие всех заголовков
+	// Проверяем наличие всех необходимых заголовков
 	for header, index := range headers {
 		if index == -1 {
-			return nil, fmt.Errorf("missing required header: %s", header)
+			return 0, fmt.Errorf("missing required header: %s", header)
 		}
 	}
 
-	// Инициализируем данные для задач
-	excelData := map[string]*TaskData{
-		"Лазерные работы": {GroupID: 1, Rows: []map[string]string{}},
-		"Труборез":        {GroupID: 11, Rows: []map[string]string{}},
-		"Гибочные работы": {GroupID: 10, Rows: []map[string]string{}},
-		"Производство":    {GroupID: 2, Rows: []map[string]string{}},
-	}
+	// Определяем конец таблицы
+	var taskID int
+	for _, row := range rows[1:] {
+		// Если строка пуста, завершение обработки
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
+		}
 
-	// Парсим строки
-	for _, cells := range rows[1:] {
-		rowData := make(map[string]string)
-		for header, index := range headers {
-			if index >= 0 && index < len(cells) {
-				rowData[header] = cells[index]
+		// Проверяем столбец "Лазерные работы"
+		if headers["Лазерные работы"] >= len(row) || row[headers["Лазерные работы"]] == "" {
+			continue
+		}
+
+		// Создаём задачу, если ещё не создана
+		if taskID == 0 {
+			taskID, err = AddTaskToGroup("Лазерные работы", 149, 1, 1046, smartProcessID)
+			if err != nil {
+				return 0, fmt.Errorf("error creating Laser Works task: %v", err)
 			}
 		}
 
-		// Проверяем заполненность данных и добавляем в соответствующие группы
-		for taskType, task := range excelData {
-			if rowData[taskType] != "" { // Если столбец не пустой
-				task.Rows = append(task.Rows, rowData)
-			}
+		// Создаём подзадачи
+		customFields := CustomTaskFields{
+			OrderNumber: row[headers["№ заказа"]],
+			Customer:    row[headers["Заказчик"]],
+			Manager:     row[headers["Менеджер"]],
+			Quantity:    row[headers["Количество материала"]],
+			Comment:     row[headers["Комментарий"]],
+			Material:    row[headers["Лазерные работы"]],
+		}
+
+		subTaskTitle := fmt.Sprintf("Лазерные работы подзадача: %s", row[headers["Лазерные работы"]])
+		_, err := AddTaskToParentId(subTaskTitle, 149, 1, taskID, customFields)
+		if err != nil {
+			log.Printf("Error creating Laser Works subtask: %v\n", err)
+			continue
 		}
 	}
 
-	return excelData, nil
+	return taskID, nil
 }
 
 // вставить после downloadFile
