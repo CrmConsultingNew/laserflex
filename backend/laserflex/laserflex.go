@@ -53,21 +53,52 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Обрабатываем задачи Лазерные работы
+	// Обрабатываем задачи
 	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID)
 	if err != nil {
 		log.Printf("Error processing Laser Works: %v\n", err)
 		http.Error(w, "Failed to process Laser Works", http.StatusInternalServerError)
 		return
 	}
-
 	log.Printf("Laser Works Task ID: %d\n", taskIDLaserWorks)
+
+	taskIDBendWorks, err := processBendWorks(fileName, smartProcessID)
+	if err != nil {
+		log.Printf("Error processing Bend Works: %v\n", err)
+		http.Error(w, "Failed to process Bend Works", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("Bend Works Task ID: %d\n", taskIDBendWorks)
+
+	taskIDPipeCutting, err := processPipeCutting(fileName, smartProcessID)
+	if err != nil {
+		log.Printf("Error processing Pipe Cutting: %v\n", err)
+		http.Error(w, "Failed to process Pipe Cutting", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("Pipe Cutting Task ID: %d\n", taskIDPipeCutting)
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File processed successfully"))
 }
 
-// processLaserWorks обрабатывает столбец "Лазерные работы" из Excel
+// processLaserWorks обрабатывает столбец "Лазерные работы"
 func processLaserWorks(fileName string, smartProcessID int) (int, error) {
+	return processTask(fileName, smartProcessID, "Лазерные работы", 1)
+}
+
+// processBendWorks обрабатывает столбец "Гибочные работы"
+func processBendWorks(fileName string, smartProcessID int) (int, error) {
+	return processTask(fileName, smartProcessID, "Гибочные работы", 10)
+}
+
+// processPipeCutting обрабатывает столбец "Труборез"
+func processPipeCutting(fileName string, smartProcessID int) (int, error) {
+	return processTask(fileName, smartProcessID, "Труборез", 11)
+}
+
+// processTask универсальная функция для обработки задач
+func processTask(fileName string, smartProcessID int, taskType string, groupID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
@@ -85,9 +116,9 @@ func processLaserWorks(fileName string, smartProcessID int) (int, error) {
 		"Заказчик":             -1,
 		"Менеджер":             -1,
 		"Количество материала": -1,
-		"Лазерные работы":      -1,
-		"Нанесение покрытий":   -1,
-		"Комментарий":          -1,
+		taskType:             -1,
+		"Нанесение покрытий": -1,
+		"Комментарий":        -1,
 	}
 
 	// Поиск заголовков
@@ -122,16 +153,16 @@ func processLaserWorks(fileName string, smartProcessID int) (int, error) {
 			break
 		}
 
-		// Проверяем столбец "Лазерные работы"
-		if headers["Лазерные работы"] >= len(row) || row[headers["Лазерные работы"]] == "" {
+		// Проверяем столбец
+		if headers[taskType] >= len(row) || row[headers[taskType]] == "" {
 			continue
 		}
 
 		// Создаём задачу, если ещё не создана
 		if taskID == 0 {
-			taskID, err = AddTaskToGroup("Лазерные работы", 149, 1, 1046, smartProcessID)
+			taskID, err = AddTaskToGroup(taskType, 149, groupID, 1046, smartProcessID)
 			if err != nil {
-				return 0, fmt.Errorf("error creating Laser Works task: %v", err)
+				return 0, fmt.Errorf("error creating %s task: %v", taskType, err)
 			}
 		}
 
@@ -142,13 +173,13 @@ func processLaserWorks(fileName string, smartProcessID int) (int, error) {
 			Manager:     row[headers["Менеджер"]],
 			Quantity:    row[headers["Количество материала"]],
 			Comment:     row[headers["Комментарий"]],
-			Material:    row[headers["Лазерные работы"]],
+			Material:    row[headers[taskType]],
 		}
 
-		subTaskTitle := fmt.Sprintf("Лазерные работы подзадача: %s", row[headers["Лазерные работы"]])
-		_, err := AddTaskToParentId(subTaskTitle, 149, 1, taskID, customFields)
+		subTaskTitle := fmt.Sprintf("%s подзадача: %s", taskType, row[headers[taskType]])
+		_, err := AddTaskToParentId(subTaskTitle, 149, groupID, taskID, customFields)
 		if err != nil {
-			log.Printf("Error creating Laser Works subtask: %v\n", err)
+			log.Printf("Error creating %s subtask: %v\n", taskType, err)
 			continue
 		}
 	}
