@@ -1,10 +1,8 @@
 package laserflex
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/xuri/excelize/v2"
-	"os"
 	"strings"
 )
 
@@ -136,21 +134,6 @@ func ReadXlsRegistryWithConditions(filename string) ([]ParsedData, error) {
 	return parsedRows, nil
 }
 
-func StartJsonConverterFromExcel(filename string) {
-	parsedRows, err := ReadXlsRegistryWithConditions(filename)
-	if err != nil {
-		fmt.Println("Error reading file:", err)
-		return
-	}
-
-	// Пишем результат в JSON файл
-	err = WriteParsedDataToJSON(parsedRows, "output.json")
-	if err != nil {
-		fmt.Println("Error writing to JSON file:", err)
-		return
-	}
-}
-
 // Извлекает данные для указанных столбцов
 func extractData(cells []string, headers map[string]int, columns []string) map[string]string {
 	data := make(map[string]string)
@@ -169,28 +152,4 @@ func getValue(cells []string, index int) string {
 		return cells[index]
 	}
 	return ""
-}
-
-func WriteParsedDataToJSON(parsedRows []ParsedData, outputFile string) error {
-	// Преобразуем данные в формат JSON с отступами для читабельности
-	jsonData, err := json.MarshalIndent(parsedRows, "", "  ")
-	if err != nil {
-		return fmt.Errorf("error marshalling data to JSON: %v", err)
-	}
-
-	// Создаем или перезаписываем файл
-	file, err := os.Create(outputFile)
-	if err != nil {
-		return fmt.Errorf("error creating file: %v", err)
-	}
-	defer file.Close()
-
-	// Записываем JSON данные в файл
-	_, err = file.Write(jsonData)
-	if err != nil {
-		return fmt.Errorf("error writing JSON to file: %v", err)
-	}
-
-	fmt.Printf("Data successfully written to %s\n", outputFile)
-	return nil
 }

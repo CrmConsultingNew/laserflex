@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/xuri/excelize/v2"
 	"io"
 	"log"
 	"net/http"
@@ -15,206 +16,164 @@ import (
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	log.Println("Connection is starting...")
 
-	contentType := r.Header.Get("Content-Type")
-	log.Println("Content-Type:", contentType)
-
-	var fileID, dealID, smartProcessID string
-	var assignedById int
-	//var docIDs []int // Массив для хранения docId
-
 	// Извлекаем параметры из URL
 	queryParams := r.URL.Query()
+	fileID := queryParams.Get("file_id")
+	smartProcessIDStr := queryParams.Get("smartProcessID")
+	engineerID := queryParams.Get("engineer_id")
 
-	// Считываем необходимые параметры
-	dealID = queryParams.Get("deal_id")
-	smartProcessID = queryParams.Get("smartProcessID")
-	fileID = queryParams.Get("file_id")
-	assignedByIdStr := queryParams.Get("assignedById")
-
-	if dealID != "" {
-		log.Printf("Extracted deal_id: %s\n", dealID)
-	}
-
-	if smartProcessID != "" {
-		log.Printf("Extracted smartProcessID: %s\n", smartProcessID)
-	}
+	log.Printf("Engineer ID: %s", engineerID)
 
 	if fileID == "" {
 		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
 		return
 	}
 
-	// Преобразование assignedById в int
-	if assignedByIdStr != "" {
-		var err error
-		assignedById, err = strconv.Atoi(assignedByIdStr)
-		if err != nil {
-			log.Printf("Error converting assignedById to int: %v\n", err)
-			http.Error(w, "Invalid assignedById parameter", http.StatusBadRequest)
-			return
-		}
-		log.Printf("Extracted assignedById: %d\n", assignedById)
+	// Конвертация smartProcessID в int
+	smartProcessID, err := strconv.Atoi(smartProcessIDStr)
+	if err != nil {
+		log.Printf("Error converting smartProcessID to int: %v\n", err)
+		http.Error(w, "Invalid smartProcessID parameter", http.StatusBadRequest)
+		return
 	}
 
-	// Вызов GetFileDetails для получения данных о файле
+	// Получаем данные о файле
 	fileDetails, err := GetFileDetails(fileID)
 	if err != nil {
-		log.Println("Error getting file details:", err)
+		log.Printf("Error getting file details: %v\n", err)
 		http.Error(w, "Failed to get file details", http.StatusInternalServerError)
 		return
 	}
 
-	// Логируем DOWNLOAD_URL
-	log.Printf("DOWNLOAD_URL: %s\n", fileDetails.DownloadURL)
-
-	// Скачиваем файл с итерацией имени
+	// Скачиваем файл
 	fileName := fmt.Sprintf("file_downloaded_xls%d.xlsx", downloadCounter)
 	err = downloadFile(fileDetails.DownloadURL, downloadCounter)
 	if err != nil {
-		log.Println("Error downloading file:", err)
+		log.Printf("Error downloading file: %v\n", err)
 		http.Error(w, "Failed to download file", http.StatusInternalServerError)
 		return
 	}
 
-	// Конвертация Excel в JSON
-	StartJsonConverterFromExcel(fileName)
-
-	var parsedData []ParsedData
-	jsonData, err := os.ReadFile("output.json")
+	// Парсим Excel файл
+	taskIDs := map[string]int{} // Для хранения ID задач
+	excelData, err := parseExcelFile(fileName)
 	if err != nil {
-		log.Printf("Error reading JSON file: %v\n", err)
-		http.Error(w, "Failed to read parsed JSON data", http.StatusInternalServerError)
-		return
-	}
-	if err := json.Unmarshal(jsonData, &parsedData); err != nil {
-		log.Printf("Error unmarshalling JSON data: %v\n", err)
-		http.Error(w, "Failed to parse JSON data", http.StatusInternalServerError)
+		log.Printf("Error parsing Excel file: %v\n", err)
+		http.Error(w, "Failed to parse Excel file", http.StatusInternalServerError)
 		return
 	}
 
-	var laserWorksId, bendWorksId, pipeCuttingId, productionId int
-
-	for _, data := range parsedData {
-
-		if data.LaserWorks != nil && laserWorksId == 0 {
-			laserWorksId, err = AddTaskToGroup("laser_works", 149, data.LaserWorks.GroupID, 1046, 458)
+	// Создаем задачи для каждой группы
+	for taskType, taskData := range excelData {
+		if len(taskData.Rows) > 0 { // Если есть данные в соответствующем столбце
+			taskID, err := AddTaskToGroup(taskType, 149, taskData.GroupID, smartProcessID, 458)
 			if err != nil {
-				log.Printf("Error creating laser_works task: %v\n", err)
+				log.Printf("Error creating task for %s: %v\n", taskType, err)
 				continue
 			}
-			log.Printf("LaserWorks Task created with ID: %d\n", laserWorksId)
-		}
+			log.Printf("%s Task created with ID: %d\n", taskType, taskID)
+			taskIDs[taskType] = taskID
 
-		if data.BendWorks != nil && bendWorksId == 0 {
-			bendWorksId, err = AddTaskToGroup("bend_works", 149, data.BendWorks.GroupID, 1046, 458)
-			if err != nil {
-				log.Printf("Error creating bend_works task: %v\n", err)
-				continue
-			}
-			log.Printf("BendWorks Task created with ID: %d\n", bendWorksId)
-		}
-
-		if data.PipeCutting != nil && pipeCuttingId == 0 {
-			pipeCuttingId, err = AddTaskToGroup("pipe_cutting", 149, data.PipeCutting.GroupID, 1046, 458)
-			if err != nil {
-				log.Printf("Error creating pipe_cutting task: %v\n", err)
-				continue
-			}
-			log.Printf("PipeCutting Task created with ID: %d\n", pipeCuttingId)
-		}
-
-		if data.Production != nil && productionId == 0 {
-			productionId, err = AddTaskToGroup("production", 149, data.Production.GroupID, 1046, 458)
-			if err != nil {
-				log.Printf("Error creating production task: %v\n", err)
-				continue
-			}
-			log.Printf("Production Task created with ID: %d\n", productionId)
-		}
-
-	}
-
-	// Добавление подзадач к каждой группе
-	for _, data := range parsedData {
-		if data.LaserWorks != nil {
-			customFields := CustomTaskFields{
-				OrderNumber: data.LaserWorks.Data["№ заказа"],
-				Customer:    data.LaserWorks.Data["Заказчик"],
-				Manager:     data.LaserWorks.Data["Менеджер"],
-				Quantity:    data.LaserWorks.Data["Количество материала"],
-				Comment:     data.LaserWorks.Data["Комментарий"],
-				Coating:     data.LaserWorks.Data["Нанесение покрытий"],
-				Material:    data.LaserWorks.Data["Лазерные работы"],
-			}
-			_, err = AddTaskToParentId(data.LaserWorks.Data["Количество материала"]+" "+data.LaserWorks.Data["Лазерные работы"], 149, data.LaserWorks.GroupID, laserWorksId, customFields)
-			if err != nil {
-				log.Printf("Error creating laser_works subtask: %v\n", err)
-				continue
-			}
-		}
-
-		if data.BendWorks != nil {
-			customFields := CustomTaskFields{
-				OrderNumber: data.BendWorks.Data["№ заказа"],
-				Customer:    data.BendWorks.Data["Заказчик"],
-				Manager:     data.BendWorks.Data["Менеджер"],
-				Quantity:    data.BendWorks.Data["Количество материала"],
-				Comment:     data.BendWorks.Data["Комментарий"],
-				Coating:     data.BendWorks.Data["Нанесение покрытий"],
-				Material:    data.BendWorks.Data["Гибочные работы"],
-			}
-			_, err = AddTaskToParentId("bend_works_subtask", 149, data.BendWorks.GroupID, bendWorksId, customFields)
-			if err != nil {
-				log.Printf("Error creating bend_works subtask: %v\n", err)
-				continue
-			}
-		}
-
-		if data.PipeCutting != nil {
-			customFields := CustomTaskFields{
-				OrderNumber: data.PipeCutting.Data["№ заказа"],
-				Customer:    data.PipeCutting.Data["Заказчик"],
-				Manager:     data.PipeCutting.Data["Менеджер"],
-				Quantity:    data.LaserWorks.Data["Количество материала"],
-				Comment:     data.PipeCutting.Data["Комментарий"],
-				Coating:     data.PipeCutting.Data["Нанесение покрытий"],
-				Material:    data.PipeCutting.Data["Труборез"],
-			}
-			_, err = AddTaskToParentId("pipe_cutting_subtask", 149, data.PipeCutting.GroupID, pipeCuttingId, customFields)
-			if err != nil {
-				log.Printf("Error creating pipe_cutting subtask: %v\n", err)
-				continue
-			}
-		}
-
-		if data.Production != nil {
-			// Преобразуем значение из "Производство" в чек-лист
-			productionSteps := strings.Fields(data.Production.Data["Производство"]) // Разделяем по пробелам
-			var checklist []map[string]interface{}
-
-			// Формируем чек-лист
-			for _, step := range productionSteps {
-				if len(step) > 0 {
-					checklist = append(checklist, map[string]interface{}{
-						"title": step,
-					})
+			// Создаем подзадачи
+			for _, row := range taskData.Rows {
+				customFields := CustomTaskFields{
+					OrderNumber: row["№ заказа"],
+					Customer:    row["Заказчик"],
+					Manager:     row["Менеджер"],
+					Quantity:    row["Количество материала"],
+					Comment:     row["Комментарий"],
+					Coating:     row["Нанесение покрытий"],
+					Material:    row[taskType],
+				}
+				subTaskTitle := fmt.Sprintf("%s подзадача: %s", taskType, row[taskType])
+				_, err := AddTaskToParentId(subTaskTitle, 149, taskData.GroupID, taskID, customFields)
+				if err != nil {
+					log.Printf("Error creating subtask for %s: %v\n", taskType, err)
+					continue
 				}
 			}
-
-			// Передаем чек-лист в функцию
-			_, err = AddTaskWithChecklist("production_with_checkList", 149, data.Production.GroupID, productionId, checklist)
-			if err != nil {
-				log.Printf("Error creating production task with checklist: %v\n", err)
-				continue
-			}
-			log.Println("Production task with checklist created successfully")
 		}
-
 	}
 
 	log.Println("All tasks and subtasks processed successfully")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File processed, tasks and subtasks added successfully"))
+}
+
+// Структура для хранения данных из Excel
+type TaskData struct {
+	GroupID int                 // ID группы (лазерные, труборез и т.д.)
+	Rows    []map[string]string // Данные строк из Excel
+}
+
+func parseExcelFile(fileName string) (map[string]*TaskData, error) {
+	f, err := excelize.OpenFile(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	rows, err := f.GetRows("Реестр")
+	if err != nil {
+		return nil, fmt.Errorf("error reading rows: %v", err)
+	}
+
+	// Определяем индексы заголовков
+	headers := map[string]int{
+		"№ заказа":             -1,
+		"Заказчик":             -1,
+		"Менеджер":             -1,
+		"Количество материала": -1,
+		"Лазерные работы":      -1,
+		"Труборез":             -1,
+		"Гибочные работы":      -1,
+		"Производство":         -1,
+		"Нанесение покрытий":   -1,
+		"Комментарий":          -1,
+	}
+
+	for i, cell := range rows[0] {
+		for header := range headers {
+			if strings.Contains(cell, header) {
+				headers[header] = i
+				break
+			}
+		}
+	}
+
+	// Проверяем наличие всех заголовков
+	for header, index := range headers {
+		if index == -1 {
+			return nil, fmt.Errorf("missing required header: %s", header)
+		}
+	}
+
+	// Инициализируем данные для задач
+	excelData := map[string]*TaskData{
+		"Лазерные работы": {GroupID: 1, Rows: []map[string]string{}},
+		"Труборез":        {GroupID: 11, Rows: []map[string]string{}},
+		"Гибочные работы": {GroupID: 10, Rows: []map[string]string{}},
+		"Производство":    {GroupID: 2, Rows: []map[string]string{}},
+	}
+
+	// Парсим строки
+	for _, cells := range rows[1:] {
+		rowData := make(map[string]string)
+		for header, index := range headers {
+			if index >= 0 && index < len(cells) {
+				rowData[header] = cells[index]
+			}
+		}
+
+		// Проверяем заполненность данных и добавляем в соответствующие группы
+		for taskType, task := range excelData {
+			if rowData[taskType] != "" { // Если столбец не пустой
+				task.Rows = append(task.Rows, rowData)
+			}
+		}
+	}
+
+	return excelData, nil
 }
 
 // вставить после downloadFile
