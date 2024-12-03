@@ -8,8 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
+	"strings"
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -165,6 +165,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("Pipe Cutting Task ID: %d\n", taskIDPipeCutting)
 
+	err = processProducts(fileName, smartProcessID, engineerID)
+	if err != nil {
+		log.Printf("Error processing products: %v\n", err)
+		http.Error(w, "Failed to process products", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File processed successfully"))
 }
@@ -274,23 +280,115 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 	return taskID, nil
 }
 
-// Функция для сохранения docIDs в текстовый файл
-func saveDocIDsToFile(filename string, docIDs []int) error {
-	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+// processProducts обрабатывает столбцы "Производство" и "Нанесение покрытий"
+func processProducts(fileName string, smartProcessID, engineerID int) error {
+	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return fmt.Errorf("error opening file: %v", err)
 	}
-	defer file.Close()
+	defer f.Close()
 
-	for _, id := range docIDs {
-		_, err := file.WriteString(fmt.Sprintf("%d\n", id))
-		if err != nil {
-			return fmt.Errorf("error writing to file: %v", err)
+	rows, err := f.GetRows("Реестр")
+	if err != nil {
+		return fmt.Errorf("error reading rows: %v", err)
+	}
+
+	// Определяем индексы заголовков
+	headers := map[string]int{
+		"Производство":       -1,
+		"Нанесение покрытий": -1,
+	}
+
+	// Поиск заголовков
+	for i, cell := range rows[0] {
+		for header := range headers {
+			if cell == header {
+				headers[header] = i
+				break
+			}
 		}
 	}
 
-	log.Printf("Document IDs saved to file: %s", filename)
+	// Проверяем наличие всех необходимых заголовков
+	for header, index := range headers {
+		if index == -1 {
+			return fmt.Errorf("missing required header: %s", header)
+		}
+	}
+
+	var checklist []map[string]interface{}
+
+	// Парсинг строк
+	for _, row := range rows[1:] {
+		// Если строка пуста, завершение обработки
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
+		}
+
+		productionCell := row[headers["Производство"]]
+		coatingCell := row[headers["Нанесение покрытий"]]
+
+		// Парсинг "Производство"
+		if productionCell != "" {
+			parsedChecklist := parseProductionCell(productionCell)
+			for _, item := range parsedChecklist {
+				checklist = append(checklist, map[string]interface{}{
+					"TITLE": item,
+				})
+			}
+		}
+
+		// Добавление "Нанесение покрытий" в чеклист
+		if coatingCell != "" {
+			checklist = append(checklist, map[string]interface{}{
+				"TITLE": coatingCell,
+			})
+		}
+	}
+
+	// Создание задачи с чеклистом
+	taskTitle := "Производство - обработка данных"
+	_, err = AddTaskWithChecklist(taskTitle, engineerID, 1046, smartProcessID, checklist)
+	if err != nil {
+		return fmt.Errorf("error creating task with checklist: %v", err)
+	}
+
 	return nil
+}
+
+// parseProductionCell парсит значение из столбца "Производство"
+func parseProductionCell(cellValue string) []string {
+	words := strings.Fields(cellValue)
+	var checklistItems []string
+	var buffer string
+
+	for i, word := range words {
+		// Если слово с заглавной буквы
+		if strings.ToUpper(string(word[0])) == string(word[0]) {
+			// Если буфер не пуст, добавляем его в список
+			if buffer != "" {
+				checklistItems = append(checklistItems, buffer)
+			}
+			buffer = word // Начинаем новый элемент
+		} else {
+			// Если слово с маленькой буквы, добавляем его к текущему буферу
+			buffer += " " + word
+		}
+
+		// Добавляем последний буфер в список, если достигнут конец
+		if i == len(words)-1 && buffer != "" {
+			checklistItems = append(checklistItems, buffer)
+		}
+	}
+
+	return checklistItems
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
