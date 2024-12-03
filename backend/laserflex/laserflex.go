@@ -63,10 +63,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("Excel file data: %v", excelData)
+
 	// Создаем задачи для каждой группы
 	for taskType, taskData := range excelData {
 		if len(taskData.Rows) > 0 { // Если есть данные в соответствующем столбце
-			taskID, err := AddTaskToGroup(taskType, 149, taskData.GroupID, smartProcessID, 458)
+			taskID, err := AddTaskToGroup(taskType, 149, taskData.GroupID, 1046, smartProcessID)
 			if err != nil {
 				log.Printf("Error creating task for %s: %v\n", taskType, err)
 				continue
