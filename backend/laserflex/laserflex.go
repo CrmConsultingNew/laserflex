@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -235,11 +236,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				OrderNumber: data.LaserWorks.Data["№ заказа"],
 				Customer:    data.LaserWorks.Data["Заказчик"],
 				Manager:     data.LaserWorks.Data["Менеджер"],
-				Material:    data.LaserWorks.Data["Количество материала"],
+				Quantity:    data.LaserWorks.Data["Количество материала"],
 				Comment:     data.LaserWorks.Data["Комментарий"],
 				Coating:     data.LaserWorks.Data["Нанесение покрытий"],
+				Material:    data.LaserWorks.Data["Лазерные работы"],
 			}
-			_, err = AddTaskToParentId("laser_works_subtask", 149, data.LaserWorks.GroupID, laserWorksId, customFields)
+			_, err = AddTaskToParentId(data.LaserWorks.Data["Количество материала"]+data.LaserWorks.Data["Лазерные работы"], 149, data.LaserWorks.GroupID, laserWorksId, customFields)
 			if err != nil {
 				log.Printf("Error creating laser_works subtask: %v\n", err)
 				continue
@@ -251,9 +253,10 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				OrderNumber: data.BendWorks.Data["№ заказа"],
 				Customer:    data.BendWorks.Data["Заказчик"],
 				Manager:     data.BendWorks.Data["Менеджер"],
-				Material:    data.BendWorks.Data["Количество материала"],
+				Quantity:    data.LaserWorks.Data["Количество материала"],
 				Comment:     data.BendWorks.Data["Комментарий"],
 				Coating:     data.BendWorks.Data["Нанесение покрытий"],
+				Material:    data.BendWorks.Data["Труборез"],
 			}
 			_, err = AddTaskToParentId("bend_works_subtask", 149, data.BendWorks.GroupID, bendWorksId, customFields)
 			if err != nil {
@@ -267,15 +270,39 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 				OrderNumber: data.PipeCutting.Data["№ заказа"],
 				Customer:    data.PipeCutting.Data["Заказчик"],
 				Manager:     data.PipeCutting.Data["Менеджер"],
-				Material:    data.PipeCutting.Data["Количество материала"],
+				Quantity:    data.LaserWorks.Data["Количество материала"],
 				Comment:     data.PipeCutting.Data["Комментарий"],
 				Coating:     data.PipeCutting.Data["Нанесение покрытий"],
+				Material:    data.PipeCutting.Data["Гибочные работы"],
 			}
 			_, err = AddTaskToParentId("pipe_cutting_subtask", 149, data.PipeCutting.GroupID, pipeCuttingId, customFields)
 			if err != nil {
 				log.Printf("Error creating pipe_cutting subtask: %v\n", err)
 				continue
 			}
+		}
+
+		if data.Production != nil {
+			// Преобразуем значение из "Производство" в чек-лист
+			productionSteps := strings.Fields(data.Production.Data["Производство"]) // Разделяем по пробелам
+			var checklist []map[string]interface{}
+
+			// Формируем чек-лист
+			for _, step := range productionSteps {
+				if len(step) > 0 {
+					checklist = append(checklist, map[string]interface{}{
+						"title": step,
+					})
+				}
+			}
+
+			// Передаем чек-лист в функцию
+			_, err = AddTaskWithChecklist("production_with_checkList", 149, data.Production.GroupID, productionId, checklist)
+			if err != nil {
+				log.Printf("Error creating production task with checklist: %v\n", err)
+				continue
+			}
+			log.Println("Production task with checklist created successfully")
 		}
 
 	}
