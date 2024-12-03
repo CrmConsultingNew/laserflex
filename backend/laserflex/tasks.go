@@ -220,61 +220,55 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 }
 
 // AddTaskWithChecklist создает задачу с чек-листом и возвращает ID созданной задачи
-func AddTaskWithChecklist(title string, responsibleID int, processTypeID, elementID int, checklist []map[string]interface{}) (int, error) {
+func AddCheckListToTheTask(taskID int, title, isComplete string) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
-	bitrixMethod := "tasks.task.add"
+	bitrixMethod := "task.checklistitem.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
 
-	// Генерация ссылки смарт-процесса
-	smartProcessLink := GenerateSmartProcessLink(processTypeID, elementID)
-
 	// Формирование тела запроса
-	requestBody := map[string]interface{}{
-		"fields": map[string]interface{}{
-			"TITLE":          title,
-			"RESPONSIBLE_ID": responsibleID,
-			"UF_CRM_TASK":    []string{smartProcessLink},
-			"checklist":      checklist, // Добавление чек-листа
+	requestBody := []interface{}{
+		taskID,
+		map[string]interface{}{
+			"TITLE":       title,
+			"IS_COMPLETE": isComplete,
 		},
 	}
 
-	// Сериализация тела запроса
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return 0, fmt.Errorf("error marshalling request body: %v", err)
 	}
 
-	// Создание HTTP-запроса
 	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return 0, fmt.Errorf("error creating HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// Отправка запроса
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("error sending HTTP request: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// Чтение ответа
 	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, fmt.Errorf("error reading response body: %v", err)
 	}
 
-	// Разбор ответа
-	var response TaskResponse
+	var response struct {
+		Result struct {
+			ID int `json:"id"`
+		} `json:"result"`
+	}
 	if err := json.Unmarshal(responseData, &response); err != nil {
 		return 0, fmt.Errorf("error unmarshalling response: %v", err)
 	}
 
-	taskID := response.Result.Task.ID
-	if taskID == 0 {
-		return 0, fmt.Errorf("failed to create task, response: %s", string(responseData))
+	if response.Result.ID == 0 {
+		return 0, fmt.Errorf("failed to add checklist item, response: %s", string(responseData))
 	}
 
-	log.Printf("Task with checklist created with ID: %d\n", taskID)
-	return taskID, nil
+	log.Printf("Checklist item added with ID: %d\n", response.Result.ID)
+	return response.Result.ID, nil
 }
