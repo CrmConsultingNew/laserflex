@@ -303,7 +303,7 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 
 		// Добавляем чек-лист к подзадаче
 		for _, item := range checklist {
-			_, err := AddCheckListToTheTask(subTaskID, item["TITLE"].(string), "N")
+			_, err := AddCheckListToTheTask(subTaskID, item[productionCell].(string))
 			if err != nil {
 				log.Printf("Error adding checklist item: %v\n", err)
 			}

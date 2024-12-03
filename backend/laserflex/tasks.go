@@ -220,7 +220,7 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 }
 
 // AddTaskWithChecklist создает задачу с чек-листом и возвращает ID созданной задачи
-func AddCheckListToTheTask(taskID int, title, isComplete string) (int, error) {
+func AddCheckListToTheTask(taskID int, title string) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "task.checklistitem.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -230,7 +230,7 @@ func AddCheckListToTheTask(taskID int, title, isComplete string) (int, error) {
 		taskID,
 		map[string]interface{}{
 			"TITLE":       title,
-			"IS_COMPLETE": isComplete,
+			"IS_COMPLETE": "N",
 		},
 	}
 
