@@ -19,9 +19,15 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 	fileID := queryParams.Get("file_id")
 	smartProcessIDStr := queryParams.Get("smartProcessID")
-	engineerID := queryParams.Get("engineer_id")
+	engineerNotConverted := queryParams.Get("engineer_id")
+	engineerID, err := strconv.Atoi(engineerNotConverted)
+	if err != nil {
+		log.Printf("Error converting engineer_id to int: %v\n", err)
+		http.Error(w, "Invalid engineer_id parameter", http.StatusBadRequest)
+		return
+	}
 
-	log.Printf("Engineer ID: %s", engineerID)
+	log.Printf("Engineer ID: %v", engineerID)
 
 	if fileID == "" {
 		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
@@ -54,7 +60,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Обрабатываем задачи
-	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID)
+	taskIDLaserWorks, err := processLaserWorks(fileName, engineerID, smartProcessID)
 	if err != nil {
 		log.Printf("Error processing Laser Works: %v\n", err)
 		http.Error(w, "Failed to process Laser Works", http.StatusInternalServerError)
@@ -62,7 +68,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("Laser Works Task ID: %d\n", taskIDLaserWorks)
 
-	taskIDBendWorks, err := processBendWorks(fileName, smartProcessID)
+	taskIDBendWorks, err := processBendWorks(fileName, engineerID, smartProcessID)
 	if err != nil {
 		log.Printf("Error processing Bend Works: %v\n", err)
 		http.Error(w, "Failed to process Bend Works", http.StatusInternalServerError)
@@ -70,7 +76,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("Bend Works Task ID: %d\n", taskIDBendWorks)
 
-	taskIDPipeCutting, err := processPipeCutting(fileName, smartProcessID)
+	taskIDPipeCutting, err := processPipeCutting(fileName, engineerID, smartProcessID)
 	if err != nil {
 		log.Printf("Error processing Pipe Cutting: %v\n", err)
 		http.Error(w, "Failed to process Pipe Cutting", http.StatusInternalServerError)
@@ -83,22 +89,22 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // processLaserWorks обрабатывает столбец "Лазерные работы"
-func processLaserWorks(fileName string, smartProcessID int) (int, error) {
-	return processTask(fileName, smartProcessID, "Лазерные работы", 1)
+func processLaserWorks(fileName string, engineerID int, smartProcessID int) (int, error) {
+	return processTask(fileName, engineerID, smartProcessID, "Лазерные работы", 1)
 }
 
 // processBendWorks обрабатывает столбец "Гибочные работы"
-func processBendWorks(fileName string, smartProcessID int) (int, error) {
-	return processTask(fileName, smartProcessID, "Гибочные работы", 10)
+func processBendWorks(fileName string, engineerID int, smartProcessID int) (int, error) {
+	return processTask(fileName, engineerID, smartProcessID, "Гибочные работы", 10)
 }
 
 // processPipeCutting обрабатывает столбец "Труборез"
-func processPipeCutting(fileName string, smartProcessID int) (int, error) {
-	return processTask(fileName, smartProcessID, "Труборез", 11)
+func processPipeCutting(fileName string, engineerID int, smartProcessID int) (int, error) {
+	return processTask(fileName, engineerID, smartProcessID, "Труборез", 11)
 }
 
 // processTask универсальная функция для обработки задач
-func processTask(fileName string, smartProcessID int, taskType string, groupID int) (int, error) {
+func processTask(fileName string, engineerID int, smartProcessID int, taskType string, groupID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
@@ -160,7 +166,7 @@ func processTask(fileName string, smartProcessID int, taskType string, groupID i
 
 		// Создаём задачу, если ещё не создана
 		if taskID == 0 {
-			taskID, err = AddTaskToGroup(taskType, 149, groupID, 1046, smartProcessID)
+			taskID, err = AddTaskToGroup(taskType, engineerID, groupID, 1046, smartProcessID)
 			if err != nil {
 				return 0, fmt.Errorf("error creating %s task: %v", taskType, err)
 			}
