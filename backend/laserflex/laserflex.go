@@ -66,6 +66,8 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var arrayOfTasksIDs []int
+
 	// Обрабатываем задачи
 	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID, engineerID)
 	if err != nil {
@@ -73,7 +75,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to process Laser Works", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Laser Works Task ID: %d\n", taskIDLaserWorks)
 
 	taskIDBendWorks, err := processBendWorks(fileName, smartProcessID, engineerID)
 	if err != nil {
@@ -81,7 +82,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to process Bend Works", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Bend Works Task ID: %d\n", taskIDBendWorks)
 
 	taskIDPipeCutting, err := processPipeCutting(fileName, smartProcessID, engineerID)
 	if err != nil {
@@ -89,7 +89,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to process Pipe Cutting", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Pipe Cutting Task ID: %d\n", taskIDPipeCutting)
 
 	taskIDProducts, err := processProducts(fileName, smartProcessID, engineerID)
 	if err != nil {
@@ -97,10 +96,21 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to process products", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Products Task ID: %d\n", taskIDProducts)
+	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDLaserWorks, taskIDProducts, taskIDBendWorks, taskIDPipeCutting)
+
+	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
+	if checkCoatingColumn(fileName) {
+		err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1733264270", "да", arrayOfTasksIDs)
+		if err != nil {
+			log.Printf("Error updating smart process: %v\n", err)
+			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
+			return
+		}
+	}
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File processed successfully"))
+
 }
 
 // processLaserWorks обрабатывает столбец "Лазерные работы"
