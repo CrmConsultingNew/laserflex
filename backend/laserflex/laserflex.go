@@ -20,14 +20,14 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	fileID := queryParams.Get("file_id")
 	smartProcessIDStr := queryParams.Get("smartProcessID")
 	engineerIDStr := queryParams.Get("engineer_id")
-	//dealID := queryParams.Get("deal_id")
-	/*assignedByIdStr := queryParams.Get("assigned")
+	dealID := queryParams.Get("deal_id")
+	assignedByIdStr := queryParams.Get("assigned")
 	assignedById, err := strconv.Atoi(assignedByIdStr)
 	if err != nil {
 		log.Printf("Error converting engineerID to int: %v\n", err)
 		http.Error(w, "Invalid engineerID parameter", http.StatusBadRequest)
 		return
-	}*/
+	}
 	engineerID, err := strconv.Atoi(engineerIDStr)
 	if err != nil {
 		log.Printf("Error converting engineerID to int: %v\n", err)
@@ -63,6 +63,71 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Error downloading file: %v\n", err)
 		http.Error(w, "Failed to download file", http.StatusInternalServerError)
+		return
+	}
+
+	products, err := ReadXlsProductRows(fileName)
+	if err != nil {
+		log.Println("Error reading Excel file:", err)
+		http.Error(w, "Failed to process Excel file", http.StatusInternalServerError)
+		return
+	}
+
+	var productIDs []int
+	var totalProductsPrice float64
+
+	for _, product := range products {
+		productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
+		if err != nil {
+			log.Printf("Error adding product %s: %v", product.Name, err)
+			continue
+		}
+		productIDs = append(productIDs, productID)
+		totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
+	}
+
+	var quantities []float64
+	var prices []float64
+	for _, product := range products {
+		quantities = append(quantities, product.Quantity)
+		prices = append(prices, product.Price)
+	}
+
+	err = AddProductsRowToDeal(dealID, productIDs, quantities, prices)
+	if err != nil {
+		log.Printf("Error adding product rows to deal: %v", err)
+		http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
+		return
+	}
+
+	docId, err := AddCatalogDocument(dealID, assignedById, totalProductsPrice)
+	if err != nil {
+		log.Printf("Error adding catalog document: %v", err)
+		http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
+		return
+	}
+
+	if len(productIDs) != len(quantities) {
+		log.Println("Mismatched lengths: productIDs and quantities")
+		http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
+		return
+	}
+
+	for i, productId := range productIDs {
+		quantity := quantities[i]
+
+		err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
+		if err != nil {
+			log.Printf("Error adding catalog document with element: %v", err)
+			http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	err = ConductDocumentId(docId)
+	if err != nil {
+		log.Printf("Error conducting document: %v", err)
+		http.Error(w, "Failed to conduct document", http.StatusInternalServerError)
 		return
 	}
 
@@ -455,68 +520,3 @@ func AddProductsRowToDeal(dealID string, productIDs []int, quantities []float64,
 }
 
 // Добавить после downloadFile
-
-/*	products, err := ReadXlsProductRows(fileName)
-	if err != nil {
-		log.Println("Error reading Excel file:", err)
-		http.Error(w, "Failed to process Excel file", http.StatusInternalServerError)
-		return
-	}
-
-	var productIDs []int
-	var totalProductsPrice float64
-
-	for _, product := range products {
-		productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
-		if err != nil {
-			log.Printf("Error adding product %s: %v", product.Name, err)
-			continue
-		}
-		productIDs = append(productIDs, productID)
-		totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
-	}
-
-	var quantities []float64
-	var prices []float64
-	for _, product := range products {
-		quantities = append(quantities, product.Quantity)
-		prices = append(prices, product.Price)
-	}
-
-	err = AddProductsRowToDeal(dealID, productIDs, quantities, prices)
-	if err != nil {
-		log.Printf("Error adding product rows to deal: %v", err)
-		http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
-		return
-	}
-
-	docId, err := AddCatalogDocument(dealID, assignedById, totalProductsPrice)
-	if err != nil {
-		log.Printf("Error adding catalog document: %v", err)
-		http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
-		return
-	}
-
-	if len(productIDs) != len(quantities) {
-		log.Println("Mismatched lengths: productIDs and quantities")
-		http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
-		return
-	}
-
-	for i, productId := range productIDs {
-		quantity := quantities[i]
-
-		err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
-		if err != nil {
-			log.Printf("Error adding catalog document with element: %v", err)
-			http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	err = ConductDocumentId(docId)
-	if err != nil {
-		log.Printf("Error conducting document: %v", err)
-		http.Error(w, "Failed to conduct document", http.StatusInternalServerError)
-		return
-	}*/
