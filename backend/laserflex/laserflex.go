@@ -368,23 +368,41 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		}
 
 		// Добавление пунктов из столбца "Нанесение покрытий"
-		if coatingCell != "" {
-			coatingItems := parseCoatingCell(coatingCell)
-			for _, item := range coatingItems {
-				_, err := AddCheckListToTheTask(taskID, item)
-				if err != nil {
-					log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
-				}
+
+		coatingCellitems := parseCoatingCell(coatingCell)
+		for _, item := range coatingCellitems {
+			_, err := AddCheckListToTheTask(taskID, item)
+			if err != nil {
+				log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
 			}
 		}
+
 	}
 
 	return taskID, nil
 }
-func parseCoatingCell(cell string) []string {
-	// Разбивает значение ячейки на элементы чек-листа
-	// Например, разделяя по запятой
-	return strings.Split(cell, ",")
+
+func parseCoatingCell(cellValue string) []string {
+	words := strings.Fields(cellValue)
+	var checklistItems []string
+	var buffer string
+
+	for i, word := range words {
+		if strings.ToUpper(string(word[0])) == string(word[0]) {
+			if buffer != "" {
+				checklistItems = append(checklistItems, buffer)
+			}
+			buffer = word
+		} else {
+			buffer += " " + word
+		}
+
+		if i == len(words)-1 && buffer != "" {
+			checklistItems = append(checklistItems, buffer)
+		}
+	}
+
+	return checklistItems
 }
 
 // parseProductionCell парсит значение из столбца "Производство"
