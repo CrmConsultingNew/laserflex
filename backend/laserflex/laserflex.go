@@ -338,6 +338,7 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
 
+	// Обработка строк и добавление чек-листов
 	for _, row := range rows[1:] {
 		// Проверяем пустоту строки
 		isEmptyRow := true
@@ -353,53 +354,37 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 
 		// Получаем значения ячеек
 		productionCell := row[headers["Производство"]]
-		//coatingCell := row[headers["Нанесение покрытий"]]
+		coatingCell := row[headers["Нанесение покрытий"]]
 
-		if productionCell == "" {
-			continue
+		// Добавление пунктов из столбца "Производство"
+		if productionCell != "" {
+			checklistItems := parseProductionCell(productionCell)
+			for _, item := range checklistItems {
+				_, err := AddCheckListToTheTask(taskID, item)
+				if err != nil {
+					log.Printf("Error adding checklist item from 'Производство': %v\n", err)
+				}
+			}
 		}
 
-		// Парсим чек-лист из ячейки "Производство"
-		checklistItems := parseProductionCell(productionCell)
-		checklist := []map[string]interface{}{}
-		for _, item := range checklistItems {
-			checklist = append(checklist, map[string]interface{}{
-				"TITLE": item,
-			})
-		}
-		/*		checklistItemsCoating := parseProductionCell(coatingCell)
-				for _, item := range checklistItemsCoating {
-					checklist = append(checklist, map[string]interface{}{
-						"TITLE": item,
-					})
-				}*/
-		log.Println("Checklist items are stored ", checklist)
-		/*// Создаём подзадачу
-		subTaskTitle := fmt.Sprintf("Производственная подзадача: %s", productionCell)
-		subTaskID, err := AddTaskToParentId(subTaskTitle, engineerID, 2, taskID, CustomTaskFields{
-			OrderNumber:    row[headers["№ заказа"]],
-			Customer:       row[headers["Заказчик"]],
-			Manager:        row[headers["Менеджер"]],
-			Quantity:       row[headers["Количество материала"]],
-			Comment:        row[headers["Комментарий"]],
-			Coating:        coatingCell,
-			ProductionTask: productionCell,
-		})
-		if err != nil {
-			log.Printf("Error creating production subtask: %v\n", err)
-			continue
-		}*/
-
-		// Добавляем чек-лист к подзадаче
-		for _, item := range checklist {
-			_, err := AddCheckListToTheTask(taskID, item[productionCell].(string))
-			if err != nil {
-				log.Printf("Error adding checklist item: %v\n", err)
+		// Добавление пунктов из столбца "Нанесение покрытий"
+		if coatingCell != "" {
+			coatingItems := parseCoatingCell(coatingCell)
+			for _, item := range coatingItems {
+				_, err := AddCheckListToTheTask(taskID, item)
+				if err != nil {
+					log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
+				}
 			}
 		}
 	}
 
 	return taskID, nil
+}
+func parseCoatingCell(cell string) []string {
+	// Разбивает значение ячейки на элементы чек-листа
+	// Например, разделяя по запятой
+	return strings.Split(cell, ",")
 }
 
 // parseProductionCell парсит значение из столбца "Производство"
