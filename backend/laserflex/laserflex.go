@@ -327,18 +327,18 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		}
 	}
 
-	// ID основной задачи "Производство"
+	// Создаем основную задачу "Производство"
 	taskID, err := AddTaskToGroup("Производство", engineerID, 2, 1046, smartProcessID)
 	if err != nil {
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
 
-	// Уникальные элементы чек-листа
+	// Используем map для хранения уникальных элементов
 	uniqueChecklistItems := make(map[string]struct{})
 
-	// Обработка строк и добавление уникальных чек-листов
+	// Обрабатываем строки файла
 	for _, row := range rows[1:] {
-		// Проверяем пустоту строки
+		// Проверяем, пуста ли строка
 		isEmptyRow := true
 		for _, cell := range row {
 			if cell != "" {
@@ -354,14 +354,14 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		productionCell := row[headers["Производство"]]
 		coatingCell := row[headers["Нанесение покрытий"]]
 
-		// Обработка элементов из "Производство"
+		// Добавляем элементы из "Производство" в map
 		if productionCell != "" {
 			for _, item := range parseProductionCell(productionCell) {
 				uniqueChecklistItems[item] = struct{}{}
 			}
 		}
 
-		// Обработка элементов из "Нанесение покрытий"
+		// Добавляем элементы из "Нанесение покрытий" в map
 		if coatingCell != "" {
 			for _, item := range parseCoatingCell(coatingCell) {
 				uniqueChecklistItems[item] = struct{}{}
@@ -381,7 +381,6 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 }
 
 func parseCoatingCell(cell string) []string {
-	// Аналогичная обработка для столбца "Нанесение покрытий"
 	parts := strings.Split(cell, ",")
 	for i, part := range parts {
 		parts[i] = strings.TrimSpace(part)
@@ -392,13 +391,14 @@ func parseCoatingCell(cell string) []string {
 // parseProductionCell парсит значение из столбца "Производство"
 func parseProductionCell(cellValue string) []string {
 	words := strings.Fields(cellValue)
-	var checklistItems []string
 	var buffer string
 
-	// Для хранения уникальных элементов
+	// Используем map для предотвращения дублирования
 	uniqueItems := make(map[string]struct{})
+	var checklistItems []string
 
 	for i, word := range words {
+		// Начало нового элемента
 		if strings.ToUpper(string(word[0])) == string(word[0]) {
 			if buffer != "" {
 				// Проверяем уникальность перед добавлением
@@ -409,11 +409,12 @@ func parseProductionCell(cellValue string) []string {
 			}
 			buffer = word
 		} else {
+			// Продолжение текущего элемента
 			buffer += " " + word
 		}
 
+		// Последний элемент строки
 		if i == len(words)-1 && buffer != "" {
-			// Проверяем уникальность последнего элемента
 			if _, exists := uniqueItems[buffer]; !exists {
 				checklistItems = append(checklistItems, buffer)
 				uniqueItems[buffer] = struct{}{}
@@ -422,6 +423,27 @@ func parseProductionCell(cellValue string) []string {
 	}
 
 	return checklistItems
+}
+
+func mergeUniqueItems(items1, items2 []string) []string {
+	uniqueSet := make(map[string]struct{})
+	var mergedItems []string
+
+	for _, item := range items1 {
+		if _, exists := uniqueSet[item]; !exists {
+			mergedItems = append(mergedItems, item)
+			uniqueSet[item] = struct{}{}
+		}
+	}
+
+	for _, item := range items2 {
+		if _, exists := uniqueSet[item]; !exists {
+			mergedItems = append(mergedItems, item)
+			uniqueSet[item] = struct{}{}
+		}
+	}
+
+	return mergedItems
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
