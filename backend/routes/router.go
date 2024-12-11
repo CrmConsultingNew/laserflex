@@ -17,10 +17,9 @@ import (
 	"net/http"
 )
 
-
-
 func Router() {
 
+	http.HandleFunc("/laser_checklist", laserflex.HandlerProcessProducts)
 
 	http.HandleFunc("/laser_auth", laserflex.AuthorizeEndpoint)
 

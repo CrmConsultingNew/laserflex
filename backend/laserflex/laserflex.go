@@ -283,6 +283,14 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 	return taskID, nil
 }
 
+func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
+	products, err := processProducts("file_downloaded_xls0.xlsx", 622, 149)
+	if err != nil {
+		log.Printf("Error processing products: %v\n", err)
+	}
+	fmt.Fprintf(w, "Products processed successfully: %v", products)
+}
+
 // processProducts обрабатывает столбцы "Производство" и "Нанесение покрытий"
 func processProducts(fileName string, smartProcessID, engineerID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
@@ -360,6 +368,7 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 			})
 		}
 
+		log.Println("Checklist items are stored ", checklist)
 		// Создаём подзадачу
 		subTaskTitle := fmt.Sprintf("Производственная подзадача: %s", productionCell)
 		subTaskID, err := AddTaskToParentId(subTaskTitle, engineerID, 2, taskID, CustomTaskFields{
