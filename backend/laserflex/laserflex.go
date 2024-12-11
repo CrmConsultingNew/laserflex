@@ -338,6 +338,9 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
 
+	// Используем map для проверки уникальности
+	uniqueChecklistItems := make(map[string]struct{})
+
 	// Обработка строк и добавление чек-листов
 	for _, row := range rows[1:] {
 		// Проверяем пустоту строки
@@ -356,21 +359,27 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		productionCell := row[headers["Производство"]]
 		coatingCell := row[headers["Нанесение покрытий"]]
 
-		_, err := AddCheckListToTheTask(taskID, productionCell)
-		if err != nil {
-			log.Printf("Error adding checklist item from 'Производство': %v\n", err)
-		}
-
-		// Добавление пунктов из столбца "Нанесение покрытий"
-
-		coatingCellitems := parseCoatingCell(coatingCell)
-		for _, item := range coatingCellitems {
-			_, err := AddCheckListToTheTask(taskID, item)
-			if err != nil {
-				log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
+		// Проверяем и добавляем элементы из "Производство"
+		if productionCell != "" {
+			if _, exists := uniqueChecklistItems[productionCell]; !exists {
+				uniqueChecklistItems[productionCell] = struct{}{}
+				_, err := AddCheckListToTheTask(taskID, productionCell)
+				if err != nil {
+					log.Printf("Error adding checklist item from 'Производство': %v\n", err)
+				}
 			}
 		}
 
+		// Проверяем и добавляем элементы из "Нанесение покрытий"
+		if coatingCell != "" {
+			if _, exists := uniqueChecklistItems[coatingCell]; !exists {
+				uniqueChecklistItems[coatingCell] = struct{}{}
+				_, err := AddCheckListToTheTask(taskID, coatingCell)
+				if err != nil {
+					log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
+				}
+			}
+		}
 	}
 
 	return taskID, nil
