@@ -284,7 +284,7 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 }
 
 func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
-	products, err := processProducts("file_downloaded_xls0.xlsx", 622, 149)
+	products, err := processProducts("file.xlsx", 622, 149)
 	if err != nil {
 		log.Printf("Error processing products: %v\n", err)
 	}
