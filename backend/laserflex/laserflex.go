@@ -350,23 +350,6 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 			break
 		}
 
-		// Получаем значения ячеек
-		productionCell := row[headers["Производство"]]
-		coatingCell := row[headers["Нанесение покрытий"]]
-
-		// Добавляем элементы из "Производство" в map
-		if productionCell != "" {
-			for _, item := range parseProductionCell(productionCell) {
-				uniqueChecklistItems[item] = struct{}{}
-			}
-		}
-
-		// Добавляем элементы из "Нанесение покрытий" в map
-		if coatingCell != "" {
-			for _, item := range parseCoatingCell(coatingCell) {
-				uniqueChecklistItems[item] = struct{}{}
-			}
-		}
 	}
 
 	// Добавляем уникальные элементы в чек-лист задачи
