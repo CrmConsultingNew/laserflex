@@ -304,17 +304,27 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		return 0, fmt.Errorf("error reading rows: %v", err)
 	}
 
-	// Определяем индекс заголовка "Производство"
-	headerIndex := -1
+	// Определяем индексы заголовков
+	headers := map[string]int{
+		"Производство":       -1,
+		"Нанесение покрытий": -1,
+	}
+
+	// Поиск заголовков
 	for i, cell := range rows[0] {
-		if cell == "Производство" {
-			headerIndex = i
-			break
+		for header := range headers {
+			if cell == header {
+				headers[header] = i
+				break
+			}
 		}
 	}
 
-	if headerIndex == -1 {
-		return 0, fmt.Errorf("missing required header: Производство")
+	// Проверяем наличие всех необходимых заголовков
+	for header, index := range headers {
+		if index == -1 {
+			return 0, fmt.Errorf("missing required header: %s", header)
+		}
 	}
 
 	// Создаем основную задачу "Производство"
@@ -323,25 +333,45 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
 
-	// Используем map для хранения уникальных строк
-	uniqueRows := make(map[string]struct{})
+	// Используем map для хранения уникальных элементов
+	uniqueChecklistItems := make(map[string]struct{})
 
 	// Обрабатываем строки файла
 	for _, row := range rows[1:] {
 		// Проверяем, пуста ли строка
-		if headerIndex >= len(row) || row[headerIndex] == "" {
-			continue
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
 		}
 
-		productionCell := strings.TrimSpace(row[headerIndex]) // Текущая строка из "Производство"
-		if _, exists := uniqueRows[productionCell]; !exists {
-			uniqueRows[productionCell] = struct{}{}
+		// Получаем значения ячеек
+		productionCell := row[headers["Производство"]]
+		coatingCell := row[headers["Нанесение покрытий"]]
+
+		// Добавляем элементы из "Производство" в map
+		if productionCell != "" {
+			for _, item := range parseProductionCell(productionCell) {
+				uniqueChecklistItems[item] = struct{}{}
+			}
+		}
+
+		// Добавляем элементы из "Нанесение покрытий" в map
+		if coatingCell != "" {
+			for _, item := range parseCoatingCell(coatingCell) {
+				uniqueChecklistItems[item] = struct{}{}
+			}
 		}
 	}
 
-	// Добавляем уникальные строки в чек-лист задачи
-	for production := range uniqueRows {
-		_, err := AddCheckListToTheTask(taskID, production)
+	// Добавляем уникальные элементы в чек-лист задачи
+	for item := range uniqueChecklistItems {
+		_, err := AddCheckListToTheTask(taskID, item)
 		if err != nil {
 			log.Printf("Error adding unique checklist item: %v\n", err)
 		}
