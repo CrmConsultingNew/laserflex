@@ -292,6 +292,7 @@ func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 // processProducts обрабатывает столбцы "Производство" и "Нанесение покрытий"
+// processProducts обрабатывает только столбец "Производство"
 func processProducts(fileName string, smartProcessID, engineerID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
@@ -304,27 +305,17 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		return 0, fmt.Errorf("error reading rows: %v", err)
 	}
 
-	// Определяем индексы заголовков
-	headers := map[string]int{
-		"Производство":       -1,
-		"Нанесение покрытий": -1,
-	}
-
-	// Поиск заголовков
+	// Определяем индекс заголовка "Производство"
+	headerIndex := -1
 	for i, cell := range rows[0] {
-		for header := range headers {
-			if cell == header {
-				headers[header] = i
-				break
-			}
+		if cell == "Производство" {
+			headerIndex = i
+			break
 		}
 	}
 
-	// Проверяем наличие всех необходимых заголовков
-	for header, index := range headers {
-		if index == -1 {
-			return 0, fmt.Errorf("missing required header: %s", header)
-		}
+	if headerIndex == -1 {
+		return 0, fmt.Errorf("missing required header: Производство")
 	}
 
 	// Создаем основную задачу "Производство"
@@ -333,39 +324,22 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
 
-	// Используем map для хранения уникальных элементов
+	// Используем map для хранения уникальных значений
 	uniqueChecklistItems := make(map[string]struct{})
 
 	// Обрабатываем строки файла
 	for _, row := range rows[1:] {
 		// Проверяем, пуста ли строка
-		isEmptyRow := true
-		for _, cell := range row {
-			if cell != "" {
-				isEmptyRow = false
-				break
-			}
-		}
-		if isEmptyRow {
-			break
+		if headerIndex >= len(row) || row[headerIndex] == "" {
+			continue
 		}
 
-		// Получаем значения ячеек
-		productionCell := row[headers["Производство"]]
-		coatingCell := row[headers["Нанесение покрытий"]]
+		// Получаем значение из столбца "Производство"
+		cellValue := row[headerIndex]
 
-		// Добавляем элементы из "Производство" в map
-		if productionCell != "" {
-			for _, item := range parseProductionCell(productionCell) {
-				uniqueChecklistItems[item] = struct{}{}
-			}
-		}
-
-		// Добавляем элементы из "Нанесение покрытий" в map
-		if coatingCell != "" {
-			for _, item := range parseCoatingCell(coatingCell) {
-				uniqueChecklistItems[item] = struct{}{}
-			}
+		// Парсим и добавляем уникальные значения из ячейки
+		for _, item := range parseProductionCell(cellValue) {
+			uniqueChecklistItems[item] = struct{}{}
 		}
 	}
 
@@ -380,28 +354,18 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 	return taskID, nil
 }
 
-func parseCoatingCell(cell string) []string {
-	parts := strings.Split(cell, ",")
-	for i, part := range parts {
-		parts[i] = strings.TrimSpace(part)
-	}
-	return parts
-}
-
-// parseProductionCell парсит значение из столбца "Производство"
+// parseProductionCell парсит значение из столбца "Производство" на уникальные элементы
 func parseProductionCell(cellValue string) []string {
 	words := strings.Fields(cellValue)
-	var buffer string
-
-	// Используем map для предотвращения дублирования
 	uniqueItems := make(map[string]struct{})
+	var buffer string
 	var checklistItems []string
 
 	for i, word := range words {
 		// Начало нового элемента
 		if strings.ToUpper(string(word[0])) == string(word[0]) {
 			if buffer != "" {
-				// Проверяем уникальность перед добавлением
+				// Добавляем уникальный элемент
 				if _, exists := uniqueItems[buffer]; !exists {
 					checklistItems = append(checklistItems, buffer)
 					uniqueItems[buffer] = struct{}{}
@@ -423,6 +387,14 @@ func parseProductionCell(cellValue string) []string {
 	}
 
 	return checklistItems
+}
+
+func parseCoatingCell(cell string) []string {
+	parts := strings.Split(cell, ",")
+	for i, part := range parts {
+		parts[i] = strings.TrimSpace(part)
+	}
+	return parts
 }
 
 func mergeUniqueItems(items1, items2 []string) []string {
