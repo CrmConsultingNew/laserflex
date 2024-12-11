@@ -353,7 +353,7 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 
 		// Получаем значения ячеек
 		productionCell := row[headers["Производство"]]
-		coatingCell := row[headers["Нанесение покрытий"]]
+		//coatingCell := row[headers["Нанесение покрытий"]]
 
 		if productionCell == "" {
 			continue
@@ -367,12 +367,12 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 				"TITLE": item,
 			})
 		}
-		checklistItemsCoating := parseProductionCell(coatingCell)
-		for _, item := range checklistItemsCoating {
-			checklist = append(checklist, map[string]interface{}{
-				"TITLE": item,
-			})
-		}
+		/*		checklistItemsCoating := parseProductionCell(coatingCell)
+				for _, item := range checklistItemsCoating {
+					checklist = append(checklist, map[string]interface{}{
+						"TITLE": item,
+					})
+				}*/
 		log.Println("Checklist items are stored ", checklist)
 		/*// Создаём подзадачу
 		subTaskTitle := fmt.Sprintf("Производственная подзадача: %s", productionCell)
