@@ -292,7 +292,6 @@ func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 // processProducts обрабатывает столбцы "Производство" и "Нанесение покрытий"
-// processProducts обрабатывает только столбец "Производство"
 func processProducts(fileName string, smartProcessID, engineerID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
