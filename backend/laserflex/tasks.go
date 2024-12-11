@@ -105,7 +105,7 @@ func GenerateSmartProcessLink(processTypeID, elementID int) string {
 // ID группы 2 - Производство
 
 // AddTaskToParentId создает подзадачу с привязкой к PARENT_ID и пользовательскими полями
-func AddTaskToParentId(title string, responsibleID, groupID, parentID int, customFields CustomTaskFields) (int, error) {
+func AddTaskToParentId(title string, responsibleID, groupID int, customFields CustomTaskFields) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -116,7 +116,6 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 			"TITLE":          title,
 			"RESPONSIBLE_ID": responsibleID,
 			"GROUP_ID":       groupID,
-			"PARENT_ID":      parentID,
 			// Добавляем пользовательские поля с учетом формата массива
 			"UF_AUTO_303168834495": []string{customFields.OrderNumber},    // № заказа
 			"UF_AUTO_876283676967": []string{customFields.Customer},       // Заказчик

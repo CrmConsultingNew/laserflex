@@ -273,7 +273,7 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 		}
 
 		subTaskTitle := fmt.Sprintf("%s подзадача: %s", taskType, row[headers[taskType]])
-		_, err := AddTaskToParentId(subTaskTitle, engineerID, groupID, taskID, customFields)
+		_, err := AddTaskToParentId(subTaskTitle, engineerID, groupID, customFields)
 		if err != nil {
 			log.Printf("Error creating %s subtask: %v\n", taskType, err)
 			continue
