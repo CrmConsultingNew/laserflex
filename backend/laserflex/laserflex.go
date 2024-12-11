@@ -212,9 +212,9 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 		"Заказчик":             -1,
 		"Менеджер":             -1,
 		"Количество материала": -1,
-		taskType:               -1,
-		"Нанесение покрытий":   -1,
-		"Комментарий":          -1,
+		taskType:             -1,
+		"Нанесение покрытий": -1,
+		"Комментарий":        -1,
 	}
 
 	// Поиск заголовков
