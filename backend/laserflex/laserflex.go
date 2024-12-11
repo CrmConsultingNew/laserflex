@@ -20,14 +20,14 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	fileID := queryParams.Get("file_id")
 	smartProcessIDStr := queryParams.Get("smartProcessID")
 	engineerIDStr := queryParams.Get("engineer_id")
-	/*dealID := queryParams.Get("deal_id")
+	dealID := queryParams.Get("deal_id")
 	assignedByIdStr := queryParams.Get("assigned")
 	assignedById, err := strconv.Atoi(assignedByIdStr)
 	if err != nil {
 		log.Printf("Error converting engineerID to int: %v\n", err)
 		http.Error(w, "Invalid engineerID parameter", http.StatusBadRequest)
 		return
-	}*/
+	}
 	engineerID, err := strconv.Atoi(engineerIDStr)
 	if err != nil {
 		log.Printf("Error converting engineerID to int: %v\n", err)
@@ -66,70 +66,70 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*	products, err := ReadXlsProductRows(fileName)
+	products, err := ReadXlsProductRows(fileName)
+	if err != nil {
+		log.Println("Error reading Excel file:", err)
+		http.Error(w, "Failed to process Excel file", http.StatusInternalServerError)
+		return
+	}
+
+	var productIDs []int
+	var totalProductsPrice float64
+
+	for _, product := range products {
+		productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
 		if err != nil {
-			log.Println("Error reading Excel file:", err)
-			http.Error(w, "Failed to process Excel file", http.StatusInternalServerError)
-			return
+			log.Printf("Error adding product %s: %v", product.Name, err)
+			continue
 		}
+		productIDs = append(productIDs, productID)
+		totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
+	}
 
-		var productIDs []int
-		var totalProductsPrice float64
+	var quantities []float64
+	var prices []float64
+	for _, product := range products {
+		quantities = append(quantities, product.Quantity)
+		prices = append(prices, product.Price)
+	}
 
-		for _, product := range products {
-			productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
-			if err != nil {
-				log.Printf("Error adding product %s: %v", product.Name, err)
-				continue
-			}
-			productIDs = append(productIDs, productID)
-			totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
-		}
+	err = AddProductsRowToDeal(dealID, productIDs, quantities, prices)
+	if err != nil {
+		log.Printf("Error adding product rows to deal: %v", err)
+		http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
+		return
+	}
 
-		var quantities []float64
-		var prices []float64
-		for _, product := range products {
-			quantities = append(quantities, product.Quantity)
-			prices = append(prices, product.Price)
-		}
+	docId, err := AddCatalogDocument(dealID, assignedById, totalProductsPrice)
+	if err != nil {
+		log.Printf("Error adding catalog document: %v", err)
+		http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
+		return
+	}
 
-		err = AddProductsRowToDeal(dealID, productIDs, quantities, prices)
+	if len(productIDs) != len(quantities) {
+		log.Println("Mismatched lengths: productIDs and quantities")
+		http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
+		return
+	}
+
+	for i, productId := range productIDs {
+		quantity := quantities[i]
+
+		err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
 		if err != nil {
-			log.Printf("Error adding product rows to deal: %v", err)
-			http.Error(w, "Failed to add product rows to deal", http.StatusInternalServerError)
+			log.Printf("Error adding catalog document with element: %v", err)
+			http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
 			return
 		}
+	}
 
-		docId, err := AddCatalogDocument(dealID, assignedById, totalProductsPrice)
-		if err != nil {
-			log.Printf("Error adding catalog document: %v", err)
-			http.Error(w, "Failed to add catalog document", http.StatusInternalServerError)
-			return
-		}
-
-		if len(productIDs) != len(quantities) {
-			log.Println("Mismatched lengths: productIDs and quantities")
-			http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
-			return
-		}
-
-		for i, productId := range productIDs {
-			quantity := quantities[i]
-
-			err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
-			if err != nil {
-				log.Printf("Error adding catalog document with element: %v", err)
-				http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
-				return
-			}
-		}
-
-		err = ConductDocumentId(docId)
-		if err != nil {
-			log.Printf("Error conducting document: %v", err)
-			http.Error(w, "Failed to conduct document", http.StatusInternalServerError)
-			return
-		}*/
+	err = ConductDocumentId(docId)
+	if err != nil {
+		log.Printf("Error conducting document: %v", err)
+		http.Error(w, "Failed to conduct document", http.StatusInternalServerError)
+		return
+	}
 
 	var arrayOfTasksIDs []int
 
@@ -155,7 +155,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskIDProducts, err := processProducts(fileName, 623, engineerID)
+	taskIDProducts, err := processProducts(fileName, smartProcessID, engineerID)
 	if err != nil {
 		log.Printf("Error processing products: %v\n", err)
 		http.Error(w, "Failed to process products", http.StatusInternalServerError)
@@ -273,7 +273,7 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 		}
 
 		subTaskTitle := fmt.Sprintf("%s подзадача: %s", taskType, row[headers[taskType]])
-		_, err := AddTaskToParentId(subTaskTitle, engineerID, groupID, customFields)
+		_, err := AddTaskToParentId(subTaskTitle, engineerID, groupID, taskID, customFields)
 		if err != nil {
 			log.Printf("Error creating %s subtask: %v\n", taskType, err)
 			continue
@@ -338,9 +338,6 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
 
-	// Используем map для проверки уникальности
-	uniqueChecklistItems := make(map[string]struct{})
-
 	// Обработка строк и добавление чек-листов
 	for _, row := range rows[1:] {
 		// Проверяем пустоту строки
@@ -359,27 +356,18 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		productionCell := row[headers["Производство"]]
 		coatingCell := row[headers["Нанесение покрытий"]]
 
-		// Проверяем и добавляем элементы из "Производство"
-		if productionCell != "" {
-			if _, exists := uniqueChecklistItems[productionCell]; !exists {
-				uniqueChecklistItems[productionCell] = struct{}{}
-				_, err := AddCheckListToTheTask(taskID, productionCell)
-				if err != nil {
-					log.Printf("Error adding checklist item from 'Производство': %v\n", err)
-				}
-			}
+		_, err := AddCheckListToTheTask(taskID, productionCell)
+		if err != nil {
+			log.Printf("Error adding checklist item from 'Производство': %v\n", err)
 		}
 
-		// Проверяем и добавляем элементы из "Нанесение покрытий"
-		if coatingCell != "" {
-			if _, exists := uniqueChecklistItems[coatingCell]; !exists {
-				uniqueChecklistItems[coatingCell] = struct{}{}
-				_, err := AddCheckListToTheTask(taskID, coatingCell)
-				if err != nil {
-					log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
-				}
-			}
+		// Добавление пунктов из столбца "Нанесение покрытий"
+
+		_, err = AddCheckListToTheTask(taskID, coatingCell)
+		if err != nil {
+			log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
 		}
+
 	}
 
 	return taskID, nil

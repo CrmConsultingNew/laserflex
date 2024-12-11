@@ -11,75 +11,6 @@ import (
 	"strings"
 )
 
-func AddCustomTask(title string, responsibleID, groupID int, customFields CustomTaskFields) (int, error) {
-	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
-	bitrixMethod := "tasks.task.add"
-	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
-
-	// Подготовка тела запроса
-	requestBody := map[string]interface{}{
-		"fields": map[string]interface{}{
-			"TITLE":          title,
-			"RESPONSIBLE_ID": responsibleID,
-			"GROUP_ID":       groupID,
-			// Добавляем пользовательские поля с учетом формата массива
-			"UF_AUTO_303168834495": []string{customFields.OrderNumber},    // № заказа
-			"UF_AUTO_876283676967": []string{customFields.Customer},       // Заказчик
-			"UF_AUTO_794809224848": []string{customFields.Manager},        // Менеджер
-			"UF_AUTO_468857876599": []string{customFields.Material},       // Материал
-			"UF_AUTO_497907774817": []string{customFields.Comment},        // Комментарий
-			"UF_AUTO_433735177517": []string{customFields.ProductionTask}, // Произв. Задача
-			"UF_AUTO_726724682983": []string{customFields.Bend},           // Гибка
-			"UF_AUTO_512869473370": []string{customFields.Coating},        // Покрытие
-			"UF_AUTO_555642596740": customFields.TemporaryOrderSum,        // Временная сумма заказа (одиночное значение)
-			"UF_AUTO_552243496167": []string{customFields.Quantity},       // Кол-во
-		},
-	}
-
-	// Сериализация тела запроса
-	jsonData, err := json.Marshal(requestBody)
-	if err != nil {
-		return 0, fmt.Errorf("error marshalling request body: %v", err)
-	}
-
-	// Создаем HTTP-запрос
-	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return 0, fmt.Errorf("error creating HTTP request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	// Отправляем запрос
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return 0, fmt.Errorf("error sending HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Читаем ответ
-	responseData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, fmt.Errorf("error reading response body: %v", err)
-	}
-
-	// Логируем ответ для отладки
-	log.Printf("Response from Bitrix24: %s\n", string(responseData))
-
-	// Разбираем ответ
-	var response TaskResponse
-	if err := json.Unmarshal(responseData, &response); err != nil {
-		return 0, fmt.Errorf("error unmarshalling response: %v", err)
-	}
-
-	// Проверяем успешность создания задачи
-	if response.Result.Task.ID == 0 {
-		return 0, fmt.Errorf("failed to create task, response: %s", string(responseData))
-	}
-
-	log.Printf("Task created with ID: %d\n", response.Result.Task.ID)
-	return response.Result.Task.ID, nil
-}
-
 // AddTaskToGroup создает задачу и возвращает ID созданной задачи
 func AddTaskToGroup(title string, responsibleID, groupID, processTypeID, elementID int) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
@@ -174,7 +105,7 @@ func GenerateSmartProcessLink(processTypeID, elementID int) string {
 // ID группы 2 - Производство
 
 // AddTaskToParentId создает подзадачу с привязкой к PARENT_ID и пользовательскими полями
-func AddTaskToParentId(title string, responsibleID, groupID int, customFields CustomTaskFields) (int, error) {
+func AddTaskToParentId(title string, responsibleID, groupID, parentID int, customFields CustomTaskFields) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -185,6 +116,7 @@ func AddTaskToParentId(title string, responsibleID, groupID int, customFields Cu
 			"TITLE":          title,
 			"RESPONSIBLE_ID": responsibleID,
 			"GROUP_ID":       groupID,
+			"PARENT_ID":      parentID,
 			// Добавляем пользовательские поля с учетом формата массива
 			"UF_AUTO_303168834495": []string{customFields.OrderNumber},    // № заказа
 			"UF_AUTO_876283676967": []string{customFields.Customer},       // Заказчик
