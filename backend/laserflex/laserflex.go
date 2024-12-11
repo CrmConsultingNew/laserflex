@@ -134,28 +134,28 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	var arrayOfTasksIDs []int
 
 	// Обрабатываем задачи
-	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID, engineerID)
+	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID, 149)
 	if err != nil {
 		log.Printf("Error processing Laser Works: %v\n", err)
 		http.Error(w, "Failed to process Laser Works", http.StatusInternalServerError)
 		return
 	}
 
-	taskIDBendWorks, err := processBendWorks(fileName, smartProcessID, engineerID)
+	taskIDBendWorks, err := processBendWorks(fileName, smartProcessID, 149)
 	if err != nil {
 		log.Printf("Error processing Bend Works: %v\n", err)
 		http.Error(w, "Failed to process Bend Works", http.StatusInternalServerError)
 		return
 	}
 
-	taskIDPipeCutting, err := processPipeCutting(fileName, smartProcessID, engineerID)
+	taskIDPipeCutting, err := processPipeCutting(fileName, smartProcessID, 149)
 	if err != nil {
 		log.Printf("Error processing Pipe Cutting: %v\n", err)
 		http.Error(w, "Failed to process Pipe Cutting", http.StatusInternalServerError)
 		return
 	}
 
-	taskIDProducts, err := processProducts(fileName, smartProcessID, engineerID)
+	taskIDProducts, err := processProducts(fileName, smartProcessID, 149)
 	if err != nil {
 		log.Printf("Error processing products: %v\n", err)
 		http.Error(w, "Failed to process products", http.StatusInternalServerError)
@@ -180,17 +180,17 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 // processLaserWorks обрабатывает столбец "Лазерные работы"
 func processLaserWorks(fileName string, smartProcessID, engineerID int) (int, error) {
-	return processTask(fileName, smartProcessID, engineerID, "Лазерные работы", 1)
+	return processTask(fileName, smartProcessID, 149, "Лазерные работы", 1)
 }
 
 // processBendWorks обрабатывает столбец "Гибочные работы"
 func processBendWorks(fileName string, smartProcessID, engineerID int) (int, error) {
-	return processTask(fileName, smartProcessID, engineerID, "Гибочные работы", 10)
+	return processTask(fileName, smartProcessID, 149, "Гибочные работы", 10)
 }
 
 // processPipeCutting обрабатывает столбец "Труборез"
 func processPipeCutting(fileName string, smartProcessID, engineerID int) (int, error) {
-	return processTask(fileName, smartProcessID, engineerID, "Труборез", 11)
+	return processTask(fileName, smartProcessID, 149, "Труборез", 11)
 }
 
 // processTask универсальная функция для обработки задач
@@ -256,7 +256,7 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 
 		// Создаём задачу, если ещё не создана
 		if taskID == 0 {
-			taskID, err = AddTaskToGroup(taskType, engineerID, groupID, 1046, smartProcessID)
+			taskID, err = AddTaskToGroup(taskType, 149, groupID, 1046, smartProcessID)
 			if err != nil {
 				return 0, fmt.Errorf("error creating %s task: %v", taskType, err)
 			}
@@ -273,7 +273,7 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 		}
 
 		subTaskTitle := fmt.Sprintf("%s подзадача: %s", taskType, row[headers[taskType]])
-		_, err := AddTaskToParentId(subTaskTitle, engineerID, groupID, taskID, customFields)
+		_, err := AddTaskToParentId(subTaskTitle, 149, groupID, taskID, customFields)
 		if err != nil {
 			log.Printf("Error creating %s subtask: %v\n", taskType, err)
 			continue
@@ -333,7 +333,7 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 	}
 
 	// ID основной задачи "Производство"
-	taskID, err := AddTaskToGroup("Производство", engineerID, 2, 1046, smartProcessID)
+	taskID, err := AddTaskToGroup("Производство", 149, 2, 1046, smartProcessID)
 	if err != nil {
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
