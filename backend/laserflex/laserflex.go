@@ -306,8 +306,13 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 
 	// Определяем индексы заголовков
 	headers := map[string]int{
-		"Производство":       -1,
-		"Нанесение покрытий": -1,
+		"Производство":         -1,
+		"Нанесение покрытий":   -1,
+		"№ заказа":             -1,
+		"Заказчик":             -1,
+		"Менеджер":             -1,
+		"Комментарий":          -1,
+		"Количество материала": -1,
 	}
 
 	// Поиск заголовков
@@ -327,18 +332,15 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		}
 	}
 
-	// Создаем основную задачу "Производство"
+	// ID основной задачи "Производство"
 	taskID, err := AddTaskToGroup("Производство", engineerID, 2, 1046, smartProcessID)
 	if err != nil {
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
 
-	// Используем map для хранения уникальных элементов
-	uniqueChecklistItems := make(map[string]struct{})
-
-	// Обрабатываем строки файла
+	// Обработка строк и добавление чек-листов
 	for _, row := range rows[1:] {
-		// Проверяем, пуста ли строка
+		// Проверяем пустоту строки
 		isEmptyRow := true
 		for _, cell := range row {
 			if cell != "" {
@@ -350,84 +352,63 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 			break
 		}
 
-	}
+		// Получаем значения ячеек
+		productionCell := row[headers["Производство"]]
+		coatingCell := row[headers["Нанесение покрытий"]]
 
-	// Добавляем уникальные элементы в чек-лист задачи
-	for item := range uniqueChecklistItems {
-		_, err := AddCheckListToTheTask(taskID, item)
-		if err != nil {
-			log.Printf("Error adding unique checklist item: %v\n", err)
+		// Добавление пунктов из столбца "Производство"
+		if productionCell != "" {
+			checklistItems := parseProductionCell(productionCell)
+			for _, item := range checklistItems {
+				_, err := AddCheckListToTheTask(taskID, item)
+				if err != nil {
+					log.Printf("Error adding checklist item from 'Производство': %v\n", err)
+				}
+			}
+		}
+
+		// Добавление пунктов из столбца "Нанесение покрытий"
+		if coatingCell != "" {
+			coatingItems := parseCoatingCell(coatingCell)
+			for _, item := range coatingItems {
+				_, err := AddCheckListToTheTask(taskID, item)
+				if err != nil {
+					log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
+				}
+			}
 		}
 	}
 
 	return taskID, nil
 }
-
 func parseCoatingCell(cell string) []string {
-	// Аналогичная обработка для столбца "Нанесение покрытий"
-	parts := strings.Split(cell, ",")
-	for i, part := range parts {
-		parts[i] = strings.TrimSpace(part)
-	}
-	return parts
+	// Разбивает значение ячейки на элементы чек-листа
+	// Например, разделяя по запятой
+	return strings.Split(cell, ",")
 }
 
 // parseProductionCell парсит значение из столбца "Производство"
 func parseProductionCell(cellValue string) []string {
 	words := strings.Fields(cellValue)
+	var checklistItems []string
 	var buffer string
 
-	// Для хранения уникальных элементов
-	uniqueItems := make(map[string]struct{})
-	var checklistItems []string
-
 	for i, word := range words {
-		// Начало нового элемента
 		if strings.ToUpper(string(word[0])) == string(word[0]) {
 			if buffer != "" {
-				// Проверяем уникальность перед добавлением
-				if _, exists := uniqueItems[buffer]; !exists {
-					checklistItems = append(checklistItems, buffer)
-					uniqueItems[buffer] = struct{}{}
-				}
+				checklistItems = append(checklistItems, buffer)
 			}
 			buffer = word
 		} else {
-			// Продолжение текущего элемента
 			buffer += " " + word
 		}
 
-		// Последний элемент строки
 		if i == len(words)-1 && buffer != "" {
-			if _, exists := uniqueItems[buffer]; !exists {
-				checklistItems = append(checklistItems, buffer)
-				uniqueItems[buffer] = struct{}{}
-			}
+			checklistItems = append(checklistItems, buffer)
 		}
 	}
 
 	return checklistItems
-}
-
-func mergeUniqueItems(items1, items2 []string) []string {
-	uniqueSet := make(map[string]struct{})
-	var mergedItems []string
-
-	for _, item := range items1 {
-		if _, exists := uniqueSet[item]; !exists {
-			mergedItems = append(mergedItems, item)
-			uniqueSet[item] = struct{}{}
-		}
-	}
-
-	for _, item := range items2 {
-		if _, exists := uniqueSet[item]; !exists {
-			mergedItems = append(mergedItems, item)
-			uniqueSet[item] = struct{}{}
-		}
-	}
-
-	return mergedItems
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
