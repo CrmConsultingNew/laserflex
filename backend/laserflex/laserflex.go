@@ -367,9 +367,14 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 				"TITLE": item,
 			})
 		}
-
+		checklistItemsCoating := parseProductionCell(coatingCell)
+		for _, item := range checklistItemsCoating {
+			checklist = append(checklist, map[string]interface{}{
+				"TITLE": item,
+			})
+		}
 		log.Println("Checklist items are stored ", checklist)
-		// Создаём подзадачу
+		/*// Создаём подзадачу
 		subTaskTitle := fmt.Sprintf("Производственная подзадача: %s", productionCell)
 		subTaskID, err := AddTaskToParentId(subTaskTitle, engineerID, 2, taskID, CustomTaskFields{
 			OrderNumber:    row[headers["№ заказа"]],
@@ -383,11 +388,11 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		if err != nil {
 			log.Printf("Error creating production subtask: %v\n", err)
 			continue
-		}
+		}*/
 
 		// Добавляем чек-лист к подзадаче
 		for _, item := range checklist {
-			_, err := AddCheckListToTheTask(subTaskID, item[productionCell].(string))
+			_, err := AddCheckListToTheTask(taskID, item[productionCell].(string))
 			if err != nil {
 				log.Printf("Error adding checklist item: %v\n", err)
 			}
