@@ -356,15 +356,9 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		productionCell := row[headers["Производство"]]
 		coatingCell := row[headers["Нанесение покрытий"]]
 
-		// Добавление пунктов из столбца "Производство"
-		if productionCell != "" {
-			checklistItems := parseProductionCell(productionCell)
-			for _, item := range checklistItems {
-				_, err := AddCheckListToTheTask(taskID, item)
-				if err != nil {
-					log.Printf("Error adding checklist item from 'Производство': %v\n", err)
-				}
-			}
+		_, err := AddCheckListToTheTask(taskID, productionCell)
+		if err != nil {
+			log.Printf("Error adding checklist item from 'Производство': %v\n", err)
 		}
 
 		// Добавление пунктов из столбца "Нанесение покрытий"
