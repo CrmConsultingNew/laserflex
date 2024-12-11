@@ -155,7 +155,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskIDProducts, err := processProducts(fileName, smartProcessID, engineerID)
+	taskIDProducts, err := processProducts(fileName, 623, engineerID)
 	if err != nil {
 		log.Printf("Error processing products: %v\n", err)
 		http.Error(w, "Failed to process products", http.StatusInternalServerError)
