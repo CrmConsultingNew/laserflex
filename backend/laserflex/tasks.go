@@ -35,7 +35,6 @@ func AddTaskToGroup(title string, responsibleID, groupID, processTypeID, element
 		return 0, fmt.Errorf("error marshalling request body: %v", err)
 	}
 
-	log.Printf("[DEBUG - DEBUG DEBUG 	 - DEBUG 	 DEBUG]")
 	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return 0, fmt.Errorf("error creating HTTP request: %v", err)
