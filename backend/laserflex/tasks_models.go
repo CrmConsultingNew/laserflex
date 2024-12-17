@@ -1,5 +1,7 @@
 package laserflex
 
+import "encoding/json"
+
 // Структуры для задачи
 type Task struct {
 	Title         string   `json:"TITLE"`
@@ -39,7 +41,7 @@ type TaskRequest struct {
 type TaskResponse struct {
 	Result struct {
 		Task struct {
-			ID int `json:"id"`
+			ID json.RawMessage `json:"id"`
 		} `json:"task"`
 	} `json:"result"`
 }
