@@ -182,6 +182,7 @@ func processPipeCutting(fileName string, smartProcessID int) (int, error) {
 }
 
 // processTaskCustom использует AddCustomTaskToParentId для обработки задач
+// processTaskCustom использует AddCustomTaskToParentId для обработки задач
 func processTaskCustom(fileName string, smartProcessID int, taskType string, groupID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
@@ -197,10 +198,8 @@ func processTaskCustom(fileName string, smartProcessID int, taskType string, gro
 	headers := map[string]int{
 		"№ заказа":             -1,
 		"Заказчик":             -1,
-		"Менеджер":             -1,
 		"Количество материала": -1,
-		taskType:      -1,
-		"Комментарий": -1,
+		taskType: -1,
 	}
 
 	// Поиск заголовков
@@ -220,7 +219,7 @@ func processTaskCustom(fileName string, smartProcessID int, taskType string, gro
 		}
 	}
 
-	// Определяем конец таблицы
+	// Обработка строк
 	for _, row := range rows[1:] {
 		isEmptyRow := true
 		for _, cell := range row {
@@ -237,16 +236,39 @@ func processTaskCustom(fileName string, smartProcessID int, taskType string, gro
 			continue
 		}
 
+		// Формируем заголовок задачи на основе taskType
+		taskTitle := ""
+		switch taskType {
+		case "Лазерные работы":
+			taskTitle = fmt.Sprintf("%s %s %s %s",
+				row[headers["№ заказа"]],
+				row[headers["Заказчик"]],
+				row[headers[taskType]],
+				row[headers["Количество материала"]])
+		case "Труборез":
+			taskTitle = fmt.Sprintf("%s %s %s %s",
+				row[headers["№ заказа"]],
+				row[headers["Заказчик"]],
+				row[headers[taskType]],
+				row[headers["Количество материала"]])
+		case "Гибочные работы":
+			taskTitle = fmt.Sprintf("Гибка %s %s %s",
+				row[headers[taskType]],
+				row[headers["№ заказа"]],
+				row[headers["Заказчик"]])
+		default:
+			taskTitle = fmt.Sprintf("%s задача: %s",
+				taskType, row[headers[taskType]])
+		}
+
 		customFields := CustomTaskFields{
 			OrderNumber: row[headers["№ заказа"]],
 			Customer:    row[headers["Заказчик"]],
-			Manager:     row[headers["Менеджер"]],
 			Quantity:    row[headers["Количество материала"]],
-			Comment:     row[headers["Комментарий"]],
 			Material:    row[headers[taskType]],
 		}
 
-		taskTitle := fmt.Sprintf("%s задача: %s", taskType, row[headers[taskType]])
+		// Создаём задачу
 		_, err := AddCustomTaskToParentId(taskTitle, 149, groupID, customFields, smartProcessID)
 		if err != nil {
 			log.Printf("Error creating %s task: %v\n", taskType, err)
