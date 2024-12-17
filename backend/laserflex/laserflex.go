@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -119,31 +118,55 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		}
 	*/
 	// Массив для всех ID задач
-	var arrayOfTasksIDs []int
 
+	var arrayOfTasksIDsLaser []int
+	var arrayOfTasksIDsBend []int
+	var arrayOfTasksIDsPipeCutting []int
+	var arrayOfTasksIDsProducts []int
 	// Обрабатываем задачи и собираем их ID
 	if taskIDs, err := processLaserWorks(fileName, smartProcessID); err == nil {
-		arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDs...)
+		arrayOfTasksIDsLaser = append(arrayOfTasksIDsLaser, taskIDs...)
 	}
 
 	if taskIDs, err := processBendWorks(fileName, smartProcessID); err == nil {
-		arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDs...)
+		arrayOfTasksIDsBend = append(arrayOfTasksIDsBend, taskIDs...)
 	}
 
 	if taskIDs, err := processPipeCutting(fileName, smartProcessID); err == nil {
-		arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDs...)
+		arrayOfTasksIDsPipeCutting = append(arrayOfTasksIDsPipeCutting, taskIDs...)
 	}
 
 	if taskIDs, err := processProducts(fileName, smartProcessID, 149); err == nil {
-		arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDs)
+		arrayOfTasksIDsProducts = append(arrayOfTasksIDsProducts, taskIDs)
 	}
 
-	log.Printf("ATTENTION!!!! arrayOfTasksIDs: %v\n", arrayOfTasksIDs)
+	// Лазерные работы ID
+	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734471089453", "да", arrayOfTasksIDsLaser)
+	if err != nil {
+		log.Printf("Error updating smart process: %v\n", err)
+		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
+		return
+	}
+
+	// Гибочные работы ID
+	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsLaser)
+	if err != nil {
+		log.Printf("Error updating smart process: %v\n", err)
+		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
+		return
+	}
+
+	// Труборез ID
+	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsLaser)
+	if err != nil {
+		log.Printf("Error updating smart process: %v\n", err)
+		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
+		return
+	}
 
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
 	if checkCoatingColumn(fileName) {
-		time.Sleep(time.Second * 20)
-		err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1733264270", "да", arrayOfTasksIDs)
+		err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734478701624", "да", arrayOfTasksIDsProducts)
 		if err != nil {
 			log.Printf("Error updating smart process: %v\n", err)
 			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
