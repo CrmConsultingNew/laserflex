@@ -124,22 +124,22 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	var arrayOfTasksIDsPipeCutting []int
 	var arrayOfTasksIDsProducts []int
 	// Обрабатываем задачи и собираем их ID
-	if taskIDs, err := processLaserWorks(fileName, smartProcessID); err == nil {
+	if taskIDs, err := processLaserWorks(fileName, smartProcessID); err != nil {
 		arrayOfTasksIDsLaser = append(arrayOfTasksIDsLaser, taskIDs...)
 		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsLaser ::: %v", arrayOfTasksIDsLaser)
 	}
 
-	if taskIDs, err := processBendWorks(fileName, smartProcessID); err == nil {
+	if taskIDs, err := processBendWorks(fileName, smartProcessID); err != nil {
 		arrayOfTasksIDsBend = append(arrayOfTasksIDsBend, taskIDs...)
 		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsBend ::: %v", arrayOfTasksIDsBend)
 	}
 
-	if taskIDs, err := processPipeCutting(fileName, smartProcessID); err == nil {
+	if taskIDs, err := processPipeCutting(fileName, smartProcessID); err != nil {
 		arrayOfTasksIDsPipeCutting = append(arrayOfTasksIDsPipeCutting, taskIDs...)
 		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsPipeCutting ::: %v", arrayOfTasksIDsPipeCutting)
 	}
 
-	if taskIDs, err := processProducts(fileName, smartProcessID, 149); err == nil {
+	if taskIDs, err := processProducts(fileName, smartProcessID, 149); err != nil {
 		arrayOfTasksIDsProducts = append(arrayOfTasksIDsProducts, taskIDs)
 		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsProducts ::: %v", arrayOfTasksIDsProducts)
 	}
