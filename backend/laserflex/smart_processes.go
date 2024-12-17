@@ -31,8 +31,7 @@ func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName, 
 		"entityTypeId": entityTypeId,
 		"id":           smartProcessID,
 		"fields": map[string]interface{}{
-			fieldName:              fieldValue,     // Обновление значения "да" для указанного поля
-			"ufCrm6_1733265874338": stringTasksIDs, // Передача массива ID как строк
+			fieldName: stringTasksIDs, // Используем динамическое имя поля
 		},
 	}
 
