@@ -113,21 +113,16 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 	// Подготовка тела запроса
 	requestBody := map[string]interface{}{
 		"fields": map[string]interface{}{
-			"TITLE":          title,
-			"RESPONSIBLE_ID": responsibleID,
-			"GROUP_ID":       groupID,
-			"PARENT_ID":      parentID,
-			// Добавляем пользовательские поля с учетом формата массива
-			"UF_AUTO_303168834495": []string{customFields.OrderNumber},    // № заказа
-			"UF_AUTO_876283676967": []string{customFields.Customer},       // Заказчик
-			"UF_AUTO_794809224848": []string{customFields.Manager},        // Менеджер
-			"UF_AUTO_468857876599": []string{customFields.Material},       // Материал
-			"UF_AUTO_497907774817": []string{customFields.Comment},        // Комментарий
-			"UF_AUTO_433735177517": []string{customFields.ProductionTask}, // Произв. Задача
-			"UF_AUTO_726724682983": []string{customFields.Bend},           // Гибка
-			"UF_AUTO_512869473370": []string{customFields.Coating},        // Покрытие
-			"UF_AUTO_555642596740": customFields.TemporaryOrderSum,        // Временная сумма заказа (одиночное значение)
-			"UF_AUTO_552243496167": []string{customFields.Quantity},       // Кол-во
+			"TITLE":                title,
+			"RESPONSIBLE_ID":       responsibleID,
+			"GROUP_ID":             groupID,
+			"PARENT_ID":            parentID,
+			"UF_AUTO_303168834495": []string{customFields.OrderNumber}, // № заказа
+			"UF_AUTO_876283676967": []string{customFields.Customer},    // Заказчик
+			"UF_AUTO_794809224848": []string{customFields.Manager},     // Менеджер
+			"UF_AUTO_468857876599": []string{customFields.Material},    // Материал
+			"UF_AUTO_497907774817": []string{customFields.Comment},     // Комментарий
+			"UF_AUTO_552243496167": []string{customFields.Quantity},    // Кол-во
 		},
 	}
 
@@ -161,18 +156,39 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 	log.Printf("Response from Bitrix24: %s\n", string(responseData))
 
 	// Разбираем ответ
-	var response TaskResponse
+	var response struct {
+		Result struct {
+			Task struct {
+				ID json.RawMessage `json:"id"`
+			} `json:"task"`
+		} `json:"result"`
+	}
+
 	if err := json.Unmarshal(responseData, &response); err != nil {
 		return 0, fmt.Errorf("error unmarshalling response: %v", err)
 	}
 
-	// Проверяем успешность создания подзадачи
-	if response.Result.Task.ID == 0 {
+	// Обрабатываем ID из json.RawMessage
+	var taskID int
+	if err := json.Unmarshal(response.Result.Task.ID, &taskID); err != nil {
+		// Если ID приходит как строка, пытаемся преобразовать
+		var taskIDStr string
+		if err := json.Unmarshal(response.Result.Task.ID, &taskIDStr); err != nil {
+			return 0, fmt.Errorf("error parsing task ID: %v", err)
+		}
+		taskID, err = strconv.Atoi(taskIDStr)
+		if err != nil {
+			return 0, fmt.Errorf("error converting task ID to int: %v", err)
+		}
+	}
+
+	// Проверка успешности создания задачи
+	if taskID == 0 {
 		return 0, fmt.Errorf("failed to create subtask, response: %s", string(responseData))
 	}
 
-	log.Printf("Subtask created with ID: %d\n", response.Result.Task.ID)
-	return response.Result.Task.ID, nil
+	log.Printf("Subtask created with ID: %d\n", taskID)
+	return taskID, nil
 }
 
 // AddTaskWithChecklist создает задачу с чек-листом и возвращает ID созданной задачи
