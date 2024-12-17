@@ -166,7 +166,7 @@ func AddCustomTaskToParentId(title string, responsibleID, groupID int, customFie
 	}
 
 	// Логируем ответ для отладки
-	log.Printf("Response from Bitrix24: %s\n", string(responseData))
+	log.Printf("Attention!!!!!!!!! AddCustomTaskToParentId Response from Bitrix24: %s\n", string(responseData))
 
 	// Разбираем ответ
 	var response TaskResponse
