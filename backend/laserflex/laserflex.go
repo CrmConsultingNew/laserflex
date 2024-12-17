@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
@@ -152,8 +153,10 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDProducts)
 
+	log.Printf("arrayOfTasksIDs: %v\n", arrayOfTasksIDs)
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
 	if checkCoatingColumn(fileName) {
+		time.Sleep(time.Second * 20)
 		err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1733264270", "да", arrayOfTasksIDs)
 		if err != nil {
 			log.Printf("Error updating smart process: %v\n", err)
@@ -181,7 +184,6 @@ func processPipeCutting(fileName string, smartProcessID int) (int, error) {
 	return processTaskCustom(fileName, smartProcessID, "Труборез", 11)
 }
 
-// processTaskCustom использует AddCustomTaskToParentId для обработки задач
 // processTaskCustom использует AddCustomTaskToParentId для обработки задач
 func processTaskCustom(fileName string, smartProcessID int, taskType string, groupID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
@@ -277,96 +279,6 @@ func processTaskCustom(fileName string, smartProcessID int, taskType string, gro
 	}
 
 	return 0, nil
-}
-
-// processTask универсальная функция для обработки задач
-func processTask(fileName string, smartProcessID, engineerID int, taskType string, groupID int) (int, error) {
-	f, err := excelize.OpenFile(fileName)
-	if err != nil {
-		return 0, fmt.Errorf("error opening file: %v", err)
-	}
-	defer f.Close()
-
-	rows, err := f.GetRows("Реестр")
-	if err != nil {
-		return 0, fmt.Errorf("error reading rows: %v", err)
-	}
-
-	// Определяем индексы заголовков
-	headers := map[string]int{
-		"№ заказа":             -1,
-		"Заказчик":             -1,
-		"Менеджер":             -1,
-		"Количество материала": -1,
-		taskType:             -1,
-		"Нанесение покрытий": -1,
-		"Комментарий":        -1,
-	}
-
-	// Поиск заголовков
-	for i, cell := range rows[0] {
-		for header := range headers {
-			if cell == header {
-				headers[header] = i
-				break
-			}
-		}
-	}
-
-	// Проверяем наличие всех необходимых заголовков
-	for header, index := range headers {
-		if index == -1 {
-			return 0, fmt.Errorf("missing required header: %s", header)
-		}
-	}
-
-	// Определяем конец таблицы
-	var taskID int
-	for _, row := range rows[1:] {
-		// Если строка пуста, завершение обработки
-		isEmptyRow := true
-		for _, cell := range row {
-			if cell != "" {
-				isEmptyRow = false
-				break
-			}
-		}
-		if isEmptyRow {
-			break
-		}
-
-		// Проверяем столбец
-		if headers[taskType] >= len(row) || row[headers[taskType]] == "" {
-			continue
-		}
-
-		// Создаём задачу, если ещё не создана
-		if taskID == 0 {
-			taskID, err = AddTaskToGroup(taskType, 149, groupID, 1046, smartProcessID)
-			if err != nil {
-				return 0, fmt.Errorf("error creating %s task: %v", taskType, err)
-			}
-		}
-
-		// Создаём подзадачи
-		customFields := CustomTaskFields{
-			OrderNumber: row[headers["№ заказа"]],
-			Customer:    row[headers["Заказчик"]],
-			Manager:     row[headers["Менеджер"]],
-			Quantity:    row[headers["Количество материала"]],
-			Comment:     row[headers["Комментарий"]],
-			Material:    row[headers[taskType]],
-		}
-
-		subTaskTitle := fmt.Sprintf("%s подзадача: %s", taskType, row[headers[taskType]])
-		_, err := AddTaskToParentId(subTaskTitle, 149, groupID, taskID, customFields)
-		if err != nil {
-			log.Printf("Error creating %s subtask: %v\n", taskType, err)
-			continue
-		}
-	}
-
-	return taskID, nil
 }
 
 func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
@@ -469,53 +381,6 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 	}
 
 	return taskID, nil
-}
-
-func parseCoatingCell(cellValue string) []string {
-	words := strings.Fields(cellValue)
-	var checklistItems []string
-	var buffer string
-
-	for i, word := range words {
-		if strings.ToUpper(string(word[0])) == string(word[0]) {
-			if buffer != "" {
-				checklistItems = append(checklistItems, buffer)
-			}
-			buffer = word
-		} else {
-			buffer += " " + word
-		}
-
-		if i == len(words)-1 && buffer != "" {
-			checklistItems = append(checklistItems, buffer)
-		}
-	}
-
-	return checklistItems
-}
-
-// parseProductionCell парсит значение из столбца "Производство"
-func parseProductionCell(cellValue string) []string {
-	words := strings.Fields(cellValue)
-	var checklistItems []string
-	var buffer string
-
-	for i, word := range words {
-		if strings.ToUpper(string(word[0])) == string(word[0]) {
-			if buffer != "" {
-				checklistItems = append(checklistItems, buffer)
-			}
-			buffer = word
-		} else {
-			buffer += " " + word
-		}
-
-		if i == len(words)-1 && buffer != "" {
-			checklistItems = append(checklistItems, buffer)
-		}
-	}
-
-	return checklistItems
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
@@ -625,4 +490,139 @@ func AddProductsRowToDeal(dealID string, productIDs []int, quantities []float64,
 	return nil
 }
 
-// Добавить после downloadFile
+// processTask универсальная функция для обработки задач
+func processTask(fileName string, smartProcessID, engineerID int, taskType string, groupID int) (int, error) {
+	f, err := excelize.OpenFile(fileName)
+	if err != nil {
+		return 0, fmt.Errorf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	rows, err := f.GetRows("Реестр")
+	if err != nil {
+		return 0, fmt.Errorf("error reading rows: %v", err)
+	}
+
+	// Определяем индексы заголовков
+	headers := map[string]int{
+		"№ заказа":             -1,
+		"Заказчик":             -1,
+		"Менеджер":             -1,
+		"Количество материала": -1,
+		taskType:             -1,
+		"Нанесение покрытий": -1,
+		"Комментарий":        -1,
+	}
+
+	// Поиск заголовков
+	for i, cell := range rows[0] {
+		for header := range headers {
+			if cell == header {
+				headers[header] = i
+				break
+			}
+		}
+	}
+
+	// Проверяем наличие всех необходимых заголовков
+	for header, index := range headers {
+		if index == -1 {
+			return 0, fmt.Errorf("missing required header: %s", header)
+		}
+	}
+
+	// Определяем конец таблицы
+	var taskID int
+	for _, row := range rows[1:] {
+		// Если строка пуста, завершение обработки
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
+		}
+
+		// Проверяем столбец
+		if headers[taskType] >= len(row) || row[headers[taskType]] == "" {
+			continue
+		}
+
+		// Создаём задачу, если ещё не создана
+		if taskID == 0 {
+			taskID, err = AddTaskToGroup(taskType, 149, groupID, 1046, smartProcessID)
+			if err != nil {
+				return 0, fmt.Errorf("error creating %s task: %v", taskType, err)
+			}
+		}
+
+		// Создаём подзадачи
+		customFields := CustomTaskFields{
+			OrderNumber: row[headers["№ заказа"]],
+			Customer:    row[headers["Заказчик"]],
+			Manager:     row[headers["Менеджер"]],
+			Quantity:    row[headers["Количество материала"]],
+			Comment:     row[headers["Комментарий"]],
+			Material:    row[headers[taskType]],
+		}
+
+		subTaskTitle := fmt.Sprintf("%s подзадача: %s", taskType, row[headers[taskType]])
+		_, err := AddTaskToParentId(subTaskTitle, 149, groupID, taskID, customFields)
+		if err != nil {
+			log.Printf("Error creating %s subtask: %v\n", taskType, err)
+			continue
+		}
+	}
+
+	return taskID, nil
+}
+
+func parseCoatingCell(cellValue string) []string {
+	words := strings.Fields(cellValue)
+	var checklistItems []string
+	var buffer string
+
+	for i, word := range words {
+		if strings.ToUpper(string(word[0])) == string(word[0]) {
+			if buffer != "" {
+				checklistItems = append(checklistItems, buffer)
+			}
+			buffer = word
+		} else {
+			buffer += " " + word
+		}
+
+		if i == len(words)-1 && buffer != "" {
+			checklistItems = append(checklistItems, buffer)
+		}
+	}
+
+	return checklistItems
+}
+
+// parseProductionCell парсит значение из столбца "Производство"
+func parseProductionCell(cellValue string) []string {
+	words := strings.Fields(cellValue)
+	var checklistItems []string
+	var buffer string
+
+	for i, word := range words {
+		if strings.ToUpper(string(word[0])) == string(word[0]) {
+			if buffer != "" {
+				checklistItems = append(checklistItems, buffer)
+			}
+			buffer = word
+		} else {
+			buffer += " " + word
+		}
+
+		if i == len(words)-1 && buffer != "" {
+			checklistItems = append(checklistItems, buffer)
+		}
+	}
+
+	return checklistItems
+}
