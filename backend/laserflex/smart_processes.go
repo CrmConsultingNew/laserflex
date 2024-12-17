@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName, fieldValue string, tasksIDs []int) error {
@@ -14,13 +15,24 @@ func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName, 
 	bitrixMethod := "crm.item.update"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
 
+	if len(tasksIDs) == 0 {
+		return fmt.Errorf("tasksIDs array is empty, cannot update smart process")
+	}
+	log.Printf("Updating smart process ID %d with tasksIDs: %v", smartProcessID, tasksIDs)
+
+	// Преобразование tasksIDs в []string
+	stringTasksIDs := make([]string, len(tasksIDs))
+	for i, id := range tasksIDs {
+		stringTasksIDs[i] = strconv.Itoa(id)
+	}
+
 	// Обновляем значение полей в запросе
 	requestBody := map[string]interface{}{
 		"entityTypeId": entityTypeId,
 		"id":           smartProcessID,
 		"fields": map[string]interface{}{
-			fieldName:              fieldValue, // Обновление значения "да" для указанного поля
-			"ufCrm6_1733265874338": tasksIDs,   // Передача массива ID в новое поле
+			fieldName:              fieldValue,     // Обновление значения "да" для указанного поля
+			"ufCrm6_1733265874338": stringTasksIDs, // Передача массива ID как строк
 		},
 	}
 
@@ -28,6 +40,7 @@ func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName, 
 	if err != nil {
 		return fmt.Errorf("error marshalling request body: %v", err)
 	}
+	log.Printf("Request Body: %s", string(jsonData))
 
 	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -45,6 +58,7 @@ func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName, 
 	if err != nil {
 		return fmt.Errorf("error reading response body: %v", err)
 	}
+	log.Printf("Response from pullCustomFieldInSmartProcess: %s", string(responseData))
 
 	var response map[string]interface{}
 	if err := json.Unmarshal(responseData, &response); err != nil {
@@ -55,6 +69,6 @@ func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName, 
 		return fmt.Errorf("failed to update smart process: %s", response["error_description"])
 	}
 
-	log.Printf("Smart process updated successfully for ID: %d with tasks: %v\n", smartProcessID, tasksIDs)
+	log.Printf("Smart process updated successfully for ID: %d with tasks: %v", smartProcessID, tasksIDs)
 	return nil
 }
