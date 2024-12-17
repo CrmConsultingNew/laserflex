@@ -153,7 +153,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDProducts)
 
-	log.Printf("arrayOfTasksIDs: %v\n", arrayOfTasksIDs)
+	log.Printf("ATTENTION!!!! arrayOfTasksIDs: %v\n", arrayOfTasksIDs)
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
 	if checkCoatingColumn(fileName) {
 		time.Sleep(time.Second * 20)
