@@ -19,22 +19,15 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 	fileID := queryParams.Get("file_id")
 	smartProcessIDStr := queryParams.Get("smartProcessID")
-	engineerIDStr := queryParams.Get("engineer_id")
 	dealID := queryParams.Get("deal_id")
 	assignedByIdStr := queryParams.Get("assigned")
+
 	assignedById, err := strconv.Atoi(assignedByIdStr)
 	if err != nil {
-		log.Printf("Error converting engineerID to int: %v\n", err)
-		http.Error(w, "Invalid engineerID parameter", http.StatusBadRequest)
+		log.Printf("Error converting assigned ID to int: %v\n", err)
+		http.Error(w, "Invalid assigned parameter", http.StatusBadRequest)
 		return
 	}
-	engineerID, err := strconv.Atoi(engineerIDStr)
-	if err != nil {
-		log.Printf("Error converting engineerID to int: %v\n", err)
-		http.Error(w, "Invalid engineerID parameter", http.StatusBadRequest)
-		return
-	}
-	log.Printf("Engineer ID: %v", engineerID)
 
 	if fileID == "" {
 		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
@@ -66,6 +59,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Чтение и обработка продуктов
 	products, err := ReadXlsProductRows(fileName)
 	if err != nil {
 		log.Println("Error reading Excel file:", err)
@@ -77,17 +71,16 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	var totalProductsPrice float64
 
 	for _, product := range products {
-		productID, err := AddProductsWithImage(product, "52") // Используем ID раздела "52" как пример
+		productID, err := AddProductsWithImage(product, "52")
 		if err != nil {
 			log.Printf("Error adding product %s: %v", product.Name, err)
 			continue
 		}
 		productIDs = append(productIDs, productID)
-		totalProductsPrice += product.Price * product.Quantity // Учитываем общую цену с учетом количества
+		totalProductsPrice += product.Price * product.Quantity
 	}
 
-	var quantities []float64
-	var prices []float64
+	var quantities, prices []float64
 	for _, product := range products {
 		quantities = append(quantities, product.Quantity)
 		prices = append(prices, product.Price)
@@ -107,16 +100,9 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(productIDs) != len(quantities) {
-		log.Println("Mismatched lengths: productIDs and quantities")
-		http.Error(w, "Mismatched lengths of productIDs and quantities", http.StatusInternalServerError)
-		return
-	}
-
 	for i, productId := range productIDs {
 		quantity := quantities[i]
-
-		err := AddCatalogDocumentElement(docId, productId, quantity) // добавить товары в документ прихода
+		err := AddCatalogDocumentElement(docId, productId, quantity)
 		if err != nil {
 			log.Printf("Error adding catalog document with element: %v", err)
 			http.Error(w, "Failed to add catalog document with element", http.StatusInternalServerError)
@@ -134,26 +120,29 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	var arrayOfTasksIDs []int
 
 	// Обрабатываем задачи
-	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID, 149)
+	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID)
 	if err != nil {
 		log.Printf("Error processing Laser Works: %v\n", err)
 		http.Error(w, "Failed to process Laser Works", http.StatusInternalServerError)
 		return
 	}
+	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDLaserWorks)
 
-	taskIDBendWorks, err := processBendWorks(fileName, smartProcessID, 149)
+	taskIDBendWorks, err := processBendWorks(fileName, smartProcessID)
 	if err != nil {
 		log.Printf("Error processing Bend Works: %v\n", err)
 		http.Error(w, "Failed to process Bend Works", http.StatusInternalServerError)
 		return
 	}
+	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDBendWorks)
 
-	taskIDPipeCutting, err := processPipeCutting(fileName, smartProcessID, 149)
+	taskIDPipeCutting, err := processPipeCutting(fileName, smartProcessID)
 	if err != nil {
 		log.Printf("Error processing Pipe Cutting: %v\n", err)
 		http.Error(w, "Failed to process Pipe Cutting", http.StatusInternalServerError)
 		return
 	}
+	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDPipeCutting)
 
 	taskIDProducts, err := processProducts(fileName, smartProcessID, 149)
 	if err != nil {
@@ -161,7 +150,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to process products", http.StatusInternalServerError)
 		return
 	}
-	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDLaserWorks, taskIDProducts, taskIDBendWorks, taskIDPipeCutting)
+	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDProducts)
 
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
 	if checkCoatingColumn(fileName) {
@@ -175,22 +164,97 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File processed successfully"))
-
 }
 
 // processLaserWorks обрабатывает столбец "Лазерные работы"
-func processLaserWorks(fileName string, smartProcessID, engineerID int) (int, error) {
-	return processTask(fileName, smartProcessID, 149, "Лазерные работы", 1)
+func processLaserWorks(fileName string, smartProcessID int) (int, error) {
+	return processTaskCustom(fileName, smartProcessID, "Лазерные работы", 1)
 }
 
 // processBendWorks обрабатывает столбец "Гибочные работы"
-func processBendWorks(fileName string, smartProcessID, engineerID int) (int, error) {
-	return processTask(fileName, smartProcessID, 149, "Гибочные работы", 10)
+func processBendWorks(fileName string, smartProcessID int) (int, error) {
+	return processTaskCustom(fileName, smartProcessID, "Гибочные работы", 10)
 }
 
 // processPipeCutting обрабатывает столбец "Труборез"
-func processPipeCutting(fileName string, smartProcessID, engineerID int) (int, error) {
-	return processTask(fileName, smartProcessID, 149, "Труборез", 11)
+func processPipeCutting(fileName string, smartProcessID int) (int, error) {
+	return processTaskCustom(fileName, smartProcessID, "Труборез", 11)
+}
+
+// processTaskCustom использует AddCustomTaskToParentId для обработки задач
+func processTaskCustom(fileName string, smartProcessID int, taskType string, groupID int) (int, error) {
+	f, err := excelize.OpenFile(fileName)
+	if err != nil {
+		return 0, fmt.Errorf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	rows, err := f.GetRows("Реестр")
+	if err != nil {
+		return 0, fmt.Errorf("error reading rows: %v", err)
+	}
+
+	headers := map[string]int{
+		"№ заказа":             -1,
+		"Заказчик":             -1,
+		"Менеджер":             -1,
+		"Количество материала": -1,
+		taskType:      -1,
+		"Комментарий": -1,
+	}
+
+	// Поиск заголовков
+	for i, cell := range rows[0] {
+		for header := range headers {
+			if cell == header {
+				headers[header] = i
+				break
+			}
+		}
+	}
+
+	// Проверяем наличие всех необходимых заголовков
+	for header, index := range headers {
+		if index == -1 {
+			return 0, fmt.Errorf("missing required header: %s", header)
+		}
+	}
+
+	// Определяем конец таблицы
+	for _, row := range rows[1:] {
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
+		}
+
+		if headers[taskType] >= len(row) || row[headers[taskType]] == "" {
+			continue
+		}
+
+		customFields := CustomTaskFields{
+			OrderNumber: row[headers["№ заказа"]],
+			Customer:    row[headers["Заказчик"]],
+			Manager:     row[headers["Менеджер"]],
+			Quantity:    row[headers["Количество материала"]],
+			Comment:     row[headers["Комментарий"]],
+			Material:    row[headers[taskType]],
+		}
+
+		taskTitle := fmt.Sprintf("%s задача: %s", taskType, row[headers[taskType]])
+		_, err := AddCustomTaskToParentId(taskTitle, 149, groupID, customFields, smartProcessID)
+		if err != nil {
+			log.Printf("Error creating %s task: %v\n", taskType, err)
+			continue
+		}
+	}
+
+	return 0, nil
 }
 
 // processTask универсальная функция для обработки задач
@@ -284,7 +348,7 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 }
 
 func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
-	products, err := processProducts("file.xlsx", 622, 149)
+	products, err := processProducts("file.xlsx", 688, 149)
 	if err != nil {
 		log.Printf("Error processing products: %v\n", err)
 	}
