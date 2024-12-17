@@ -118,42 +118,28 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	*/
+	// Массив для всех ID задач
 	var arrayOfTasksIDs []int
 
-	// Обрабатываем задачи
-	taskIDLaserWorks, err := processLaserWorks(fileName, smartProcessID)
-	if err != nil {
-		log.Printf("Error processing Laser Works: %v\n", err)
-		http.Error(w, "Failed to process Laser Works", http.StatusInternalServerError)
-		return
+	// Обрабатываем задачи и собираем их ID
+	if taskIDs, err := processLaserWorks(fileName, smartProcessID); err == nil {
+		arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDs...)
 	}
-	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDLaserWorks)
 
-	taskIDBendWorks, err := processBendWorks(fileName, smartProcessID)
-	if err != nil {
-		log.Printf("Error processing Bend Works: %v\n", err)
-		http.Error(w, "Failed to process Bend Works", http.StatusInternalServerError)
-		return
+	if taskIDs, err := processBendWorks(fileName, smartProcessID); err == nil {
+		arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDs...)
 	}
-	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDBendWorks)
 
-	taskIDPipeCutting, err := processPipeCutting(fileName, smartProcessID)
-	if err != nil {
-		log.Printf("Error processing Pipe Cutting: %v\n", err)
-		http.Error(w, "Failed to process Pipe Cutting", http.StatusInternalServerError)
-		return
+	if taskIDs, err := processPipeCutting(fileName, smartProcessID); err == nil {
+		arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDs...)
 	}
-	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDPipeCutting)
 
-	taskIDProducts, err := processProducts(fileName, smartProcessID, 149)
-	if err != nil {
-		log.Printf("Error processing products: %v\n", err)
-		http.Error(w, "Failed to process products", http.StatusInternalServerError)
-		return
+	if taskIDs, err := processProducts(fileName, smartProcessID, 149); err == nil {
+		arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDs)
 	}
-	arrayOfTasksIDs = append(arrayOfTasksIDs, taskIDProducts)
 
 	log.Printf("ATTENTION!!!! arrayOfTasksIDs: %v\n", arrayOfTasksIDs)
+
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
 	if checkCoatingColumn(fileName) {
 		time.Sleep(time.Second * 20)
@@ -170,31 +156,31 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // processLaserWorks обрабатывает столбец "Лазерные работы"
-func processLaserWorks(fileName string, smartProcessID int) (int, error) {
+func processLaserWorks(fileName string, smartProcessID int) ([]int, error) {
 	return processTaskCustom(fileName, smartProcessID, "Лазерные работы", 1)
 }
 
 // processBendWorks обрабатывает столбец "Гибочные работы"
-func processBendWorks(fileName string, smartProcessID int) (int, error) {
+func processBendWorks(fileName string, smartProcessID int) ([]int, error) {
 	return processTaskCustom(fileName, smartProcessID, "Гибочные работы", 10)
 }
 
 // processPipeCutting обрабатывает столбец "Труборез"
-func processPipeCutting(fileName string, smartProcessID int) (int, error) {
+func processPipeCutting(fileName string, smartProcessID int) ([]int, error) {
 	return processTaskCustom(fileName, smartProcessID, "Труборез", 11)
 }
 
 // processTaskCustom использует AddCustomTaskToParentId для обработки задач
-func processTaskCustom(fileName string, smartProcessID int, taskType string, groupID int) (int, error) {
+func processTaskCustom(fileName string, smartProcessID int, taskType string, groupID int) ([]int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
-		return 0, fmt.Errorf("error opening file: %v", err)
+		return nil, fmt.Errorf("error opening file: %v", err)
 	}
 	defer f.Close()
 
 	rows, err := f.GetRows("Реестр")
 	if err != nil {
-		return 0, fmt.Errorf("error reading rows: %v", err)
+		return nil, fmt.Errorf("error reading rows: %v", err)
 	}
 
 	headers := map[string]int{
@@ -217,9 +203,12 @@ func processTaskCustom(fileName string, smartProcessID int, taskType string, gro
 	// Проверяем наличие всех необходимых заголовков
 	for header, index := range headers {
 		if index == -1 {
-			return 0, fmt.Errorf("missing required header: %s", header)
+			return nil, fmt.Errorf("missing required header: %s", header)
 		}
 	}
+
+	// Массив для хранения ID созданных задач
+	var taskIDs []int
 
 	// Обработка строк
 	for _, row := range rows[1:] {
@@ -271,14 +260,15 @@ func processTaskCustom(fileName string, smartProcessID int, taskType string, gro
 		}
 
 		// Создаём задачу
-		_, err := AddCustomTaskToParentId(taskTitle, 149, groupID, customFields, smartProcessID)
+		taskID, err := AddCustomTaskToParentId(taskTitle, 149, groupID, customFields, smartProcessID)
 		if err != nil {
 			log.Printf("Error creating %s task: %v\n", taskType, err)
 			continue
 		}
+		taskIDs = append(taskIDs, taskID)
 	}
 
-	return 0, nil
+	return taskIDs, nil
 }
 
 func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
