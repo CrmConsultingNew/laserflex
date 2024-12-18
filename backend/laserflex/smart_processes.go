@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName, fieldValue string, tasksIDs []int) error {
+func pullCustomFieldInSmartProcess(checkCoating bool, entityTypeId, smartProcessID int, fieldName, fieldValue string, tasksIDs []int) error {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "crm.item.update"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -26,6 +26,9 @@ func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName, 
 		stringTasksIDs[i] = strconv.Itoa(id)
 	}
 
+	if checkCoating == true {
+
+	}
 	// Обновляем значение полей в запросе
 	requestBody := map[string]interface{}{
 		"entityTypeId": entityTypeId,
@@ -34,7 +37,15 @@ func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName, 
 			fieldName: stringTasksIDs, // Используем динамическое имя поля
 		},
 	}
-
+	if checkCoating == true {
+		requestBody = map[string]interface{}{
+			"entityTypeId": entityTypeId,
+			"id":           smartProcessID,
+			"fields": map[string]interface{}{
+				"ufCrm6_1733264270": "да", // Используем динамическое имя поля
+			},
+		}
+	}
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return fmt.Errorf("error marshalling request body: %v", err)

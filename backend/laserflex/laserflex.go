@@ -145,7 +145,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Лазерные работы ID
-	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734471089453", "да", arrayOfTasksIDsLaser)
+	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471089453", "да", arrayOfTasksIDsLaser)
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
 		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
@@ -153,7 +153,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Гибочные работы ID
-	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsBend) // Используем правильную переменную!
+	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsBend) // Используем правильную переменную!
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
 		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
@@ -161,7 +161,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Труборез ID
-	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsPipeCutting) // Используем правильную переменную!
+	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsPipeCutting) // Используем правильную переменную!
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
 		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
@@ -172,7 +172,8 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	if checkCoatingColumn(fileName) {
 		//AddCustomTaskToParentIdCoating()
-		err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734478701624", "да", arrayOfTasksIDsProducts)
+
+		err = pullCustomFieldInSmartProcess(true, 1046, smartProcessID, "ufCrm6_1734478701624", "да", arrayOfTasksIDsProducts)
 		if err != nil {
 			log.Printf("Error updating smart process: %v\n", err)
 			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
