@@ -169,7 +169,9 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
+
 	if checkCoatingColumn(fileName) {
+		//AddCustomTaskToParentIdCoating()
 		err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734478701624", "да", arrayOfTasksIDsProducts)
 		if err != nil {
 			log.Printf("Error updating smart process: %v\n", err)
