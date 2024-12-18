@@ -197,6 +197,82 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 	return taskID, nil
 }
 
+func AddCustomCoatingTask(title string, responsibleID, groupID int, customFields CustomTaskFields, elementID int, colorArray []string) (int, error) {
+	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
+	bitrixMethod := "tasks.task.add"
+	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
+
+	// Генерация ссылки смарт-процесса
+	smartProcessLink := GenerateSmartProcessLink(1046, elementID)
+
+	// Вычисление DEADLINE: текущая дата + 13 часов
+	currentTime := time.Now().Add(13 * time.Hour)
+	deadline := currentTime.Format("02.01.2006T15:04:05")
+
+	// Подготовка тела запроса
+	requestBody := map[string]interface{}{
+		"fields": map[string]interface{}{
+			"TITLE":                title,
+			"RESPONSIBLE_ID":       responsibleID,
+			"GROUP_ID":             groupID,
+			"UF_CRM_TASK":          []string{smartProcessLink},
+			"UF_AUTO_303168834495": []string{customFields.OrderNumber}, // № заказа
+			"UF_AUTO_876283676967": []string{customFields.Customer},    // Заказчик
+			"UF_AUTO_512869473370": colorArray,                         // Массив значений "Цвет / Цинк"
+			"DEADLINE":             deadline,                           // DEADLINE: текущая дата + 13 часов
+		},
+	}
+
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return 0, fmt.Errorf("error marshalling request body: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return 0, fmt.Errorf("error creating HTTP request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("error sending HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	responseData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("error reading response body: %v", err)
+	}
+
+	log.Printf("Attention!!!!!!!!! AddCustomTaskToParentId Response from Bitrix24: %s\n", string(responseData))
+
+	var response TaskResponse
+	if err := json.Unmarshal(responseData, &response); err != nil {
+		return 0, fmt.Errorf("error unmarshalling response: %v", err)
+	}
+
+	var taskID int
+	if err := json.Unmarshal(response.Result.Task.ID, &taskID); err != nil {
+		var taskIDStr string
+		if err := json.Unmarshal(response.Result.Task.ID, &taskIDStr); err != nil {
+			return 0, fmt.Errorf("error parsing task id: %v", err)
+		}
+		taskID, err = strconv.Atoi(taskIDStr)
+		if err != nil {
+			return 0, fmt.Errorf("error converting task id to int: %v", err)
+		}
+	}
+
+	if taskID == 0 {
+		return 0, fmt.Errorf("failed to create subtask, response: %s", string(responseData))
+	}
+
+	log.Printf("Subtask created with ID: %d\n", taskID)
+	return taskID, nil
+}
+
+
 // AddTaskWithChecklist создает задачу с чек-листом и возвращает ID созданной задачи
 func AddCheckListToTheTask(taskID int, title string) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"

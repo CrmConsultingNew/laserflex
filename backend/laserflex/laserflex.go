@@ -172,6 +172,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	if checkCoatingColumn(fileName) {
 		//AddCustomTaskToParentIdCoating()
+		err := processCoatingTasks(fileName, smartProcessID, 149)
+		if err != nil {
+			log.Printf("Error processing coating tasks: %v\n", err)
+			http.Error(w, "Failed to process coating tasks", http.StatusInternalServerError)
+			return
+		}
 
 		err = pullCustomFieldInSmartProcess(true, 1046, smartProcessID, "ufCrm6_1734478701624", "да", arrayOfTasksIDsProducts)
 		if err != nil {
@@ -401,6 +407,93 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 	}
 
 	return taskID, nil
+}
+
+func processCoatingTasks(fileName string, smartProcessID, engineerID int) error {
+	f, err := excelize.OpenFile(fileName)
+	if err != nil {
+		return fmt.Errorf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	rows, err := f.GetRows("Реестр")
+	if err != nil {
+		return fmt.Errorf("error reading rows: %v", err)
+	}
+
+	// Определяем индексы заголовков
+	headers := map[string]int{
+		"Нанесение покрытий": -1,
+		"№ заказа":           -1,
+		"Заказчик":           -1,
+		"Цвет / Цинк":        -1,
+	}
+
+	for i, cell := range rows[0] {
+		for header := range headers {
+			if cell == header {
+				headers[header] = i
+				break
+			}
+		}
+	}
+
+	// Проверяем наличие всех необходимых заголовков
+	for header, index := range headers {
+		if index == -1 {
+			return fmt.Errorf("missing required header: %s", header)
+		}
+	}
+
+	// Уникальные значения для "Цвет / Цинк"
+	uniqueColors := make(map[string]struct{})
+
+	// Обработка строк
+	for _, row := range rows[1:] {
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
+		}
+
+		orderNumber := row[headers["№ заказа"]]
+		customer := row[headers["Заказчик"]]
+		coating := row[headers["Нанесение покрытий"]]
+		color := row[headers["Цвет / Цинк"]]
+
+		if coating != "" {
+			if _, exists := uniqueColors[color]; !exists {
+				uniqueColors[color] = struct{}{}
+			}
+
+			taskTitle := fmt.Sprintf("Проверить наличие ЛКП на складе в ОМТС по Заказу %s", orderNumber)
+
+			customFields := CustomTaskFields{
+				OrderNumber: orderNumber,
+				Customer:    customer,
+			}
+
+			// Создаём задачу, передавая массив уникальных цветов
+			colorArray := make([]string, 0, len(uniqueColors))
+			for color := range uniqueColors {
+				colorArray = append(colorArray, color)
+			}
+
+			_, err := AddCustomCoatingTask(taskTitle, engineerID, 12, customFields, smartProcessID, colorArray)
+			if err != nil {
+				log.Printf("Error creating coating task: %v\n", err)
+				continue
+			}
+		}
+	}
+
+	log.Printf("Processing coating tasks completed successfully")
+	return nil
 }
 
 func GetFileDetails(fileID string) (*FileDetails, error) {
