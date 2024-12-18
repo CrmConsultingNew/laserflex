@@ -12,6 +12,90 @@ import (
 	"time"
 )
 
+func AddTaskToGroupColor(title string, responsibleID, groupID, processTypeID, elementID int, colors []string) (int, error) {
+	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
+	bitrixMethod := "tasks.task.add"
+	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
+
+	// Генерация ссылки смарт-процесса
+	smartProcessLink := GenerateSmartProcessLink(processTypeID, elementID)
+
+	// Вычисление DEADLINE: Текущая дата + 13 часов
+	currentTime := time.Now().Add(16 * time.Hour)
+	deadline := currentTime.Format("02.01.2006T15:04:05")
+
+	// Формирование тела запроса
+	requestBody := map[string]interface{}{
+		"fields": map[string]interface{}{
+			"TITLE":                title,
+			"RESPONSIBLE_ID":       responsibleID,
+			"GROUP_ID":             groupID,
+			"UF_CRM_TASK":          []string{smartProcessLink},
+			"DEADLINE":             deadline, // DEADLINE: текущая дата + 13 часов,
+			"UF_AUTO_512869473370": colors,
+		},
+	}
+
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return 0, fmt.Errorf("error marshalling request body: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return 0, fmt.Errorf("error creating HTTP request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("error sending HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	responseData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("error reading response body: %v", err)
+	}
+
+	// Логирование для отладки
+	log.Printf("Raw Response: %s\n", string(responseData))
+
+	// Измененная структура ответа
+	var response struct {
+		Result struct {
+			Task struct {
+				ID json.RawMessage `json:"id"` // Используем RawMessage для обработки id как строки или числа
+			} `json:"task"`
+		} `json:"result"`
+	}
+
+	if err := json.Unmarshal(responseData, &response); err != nil {
+		return 0, fmt.Errorf("error unmarshalling response: %v", err)
+	}
+
+	// Обрабатываем ID задачи
+	var taskID int
+	if err := json.Unmarshal(response.Result.Task.ID, &taskID); err != nil {
+		// Если id не является числом, пробуем распарсить его как строку
+		var taskIDStr string
+		if err := json.Unmarshal(response.Result.Task.ID, &taskIDStr); err != nil {
+			return 0, fmt.Errorf("error parsing task id: %v", err)
+		}
+		taskID, err = strconv.Atoi(taskIDStr)
+		if err != nil {
+			return 0, fmt.Errorf("error converting task id to int: %v", err)
+		}
+	}
+
+	if taskID == 0 {
+		return 0, fmt.Errorf("failed to create task, response: %s", string(responseData))
+	}
+
+	log.Printf("Task created with ID: %d\n", taskID)
+	return taskID, nil
+}
+
 // AddTaskToGroup создает задачу и возвращает ID созданной задачи
 func AddTaskToGroup(title string, responsibleID, groupID, processTypeID, elementID int) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
@@ -271,7 +355,6 @@ func AddCustomCoatingTask(title string, responsibleID, groupID int, customFields
 	log.Printf("Subtask created with ID: %d\n", taskID)
 	return taskID, nil
 }
-
 
 // AddTaskWithChecklist создает задачу с чек-листом и возвращает ID созданной задачи
 func AddCheckListToTheTask(taskID int, title string) (int, error) {

@@ -171,11 +171,11 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
 
 	if checkCoatingColumn(fileName) {
-		//AddCustomTaskToParentIdCoating()
-		err := processCoatingTasks(fileName, smartProcessID, 149)
+		// UF_AUTO_512869473370
+		colors := parseSheetForColorColumn(fileName)
+		_, err := AddTaskToGroupColor("Проверить наличие ЛКП на складе в ОМТС", 149, 12, 1046, smartProcessID, colors)
 		if err != nil {
-			log.Printf("Error processing coating tasks: %v\n", err)
-			http.Error(w, "Failed to process coating tasks", http.StatusInternalServerError)
+			log.Printf("Error parsing color: %v", err)
 			return
 		}
 
@@ -183,6 +183,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("Error updating smart process: %v\n", err)
 			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		_, err := AddTaskToGroupColor("задача в ОМТС с материалами из накладной", 149, 12, 1046, smartProcessID, nil)
+		if err != nil {
+			log.Printf("Error updating smart process: %v\n", err)
 			return
 		}
 	}

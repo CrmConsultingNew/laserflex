@@ -22,7 +22,6 @@ func main() {
 	laserflex.ReadXlsProductRow("file_downloaded_xls1.xlsx")
 	return*/
 
-	//return
 	fmt.Println("service starting...")
 
 	// Загрузка переменных окружения из файла .env
