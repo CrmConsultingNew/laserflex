@@ -168,29 +168,32 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Парсим файл для извлечения данных
-	orderNumber, customer, colors, err := parseSheetForColorColumnAndTasks(fileName)
-	if err != nil {
-		log.Printf("Error parsing sheet: %v\n", err)
-		http.Error(w, "Failed to parse the sheet", http.StatusInternalServerError)
-		return
-	}
-
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
+
+	// Проверяем наличие данных в столбце "Нанесение покрытий"
 	if checkCoatingColumn(fileName) {
-		title := fmt.Sprintf("Проверить наличие ЛКП для заказа %s клиента %s", orderNumber, customer)
-		_, err = AddTaskToGroupColor(title, 149, 12, 1046, smartProcessID, colors)
+		// Если есть данные, получаем цвета из "Цвет/цинк"
+		colors := parseSheetForColorColumn(fileName)
+		_, err := AddTaskToGroupColor("Проверить наличие ЛКП на складе в ОМТС", 149, 12, 1046, smartProcessID, colors)
 		if err != nil {
-			log.Printf("Error creating task with colors: %v\n", err)
-			http.Error(w, "Failed to create task", http.StatusInternalServerError)
+			log.Printf("Error creating task with colors: %v", err)
+			http.Error(w, "Failed to create task with colors", http.StatusInternalServerError)
+			return
+		}
+
+		// Обновляем смарт-процесс
+		err = pullCustomFieldInSmartProcess(true, 1046, smartProcessID, "ufCrm6_1734478701624", "да", nil)
+		if err != nil {
+			log.Printf("Error updating smart process: %v\n", err)
+			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
 			return
 		}
 	} else {
-		title := fmt.Sprintf("Обработка заказа %s для клиента %s", orderNumber, customer)
-		_, err = AddTaskToGroupColor(title, 149, 12, 1046, smartProcessID, nil)
+		// Если данных нет, создаём задачу без цветов
+		_, err := AddTaskToGroupColor("Задача в ОМТС с материалами из накладной", 149, 12, 1046, smartProcessID, nil)
 		if err != nil {
-			log.Printf("Error creating task without colors: %v\n", err)
-			http.Error(w, "Failed to create task", http.StatusInternalServerError)
+			log.Printf("Error creating task without colors: %v", err)
+			http.Error(w, "Failed to create task without colors", http.StatusInternalServerError)
 			return
 		}
 	}

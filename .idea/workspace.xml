@@ -8,6 +8,8 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/laserflex/color_column.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/laserflex/color_column.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/laserflex/laserflex.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/laserflex/laserflex.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/file.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/file.xlsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
