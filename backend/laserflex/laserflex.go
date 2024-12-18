@@ -168,27 +168,29 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Парсим файл для извлечения данных
+	orderNumber, customer, colors, err := parseSheetForColorColumnAndTasks(fileName)
+	if err != nil {
+		log.Printf("Error parsing sheet: %v\n", err)
+		http.Error(w, "Failed to parse the sheet", http.StatusInternalServerError)
+		return
+	}
+
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
-
 	if checkCoatingColumn(fileName) {
-		// UF_AUTO_512869473370
-		colors := parseSheetForColorColumn(fileName)
-		_, err := AddTaskToGroupColor("Проверить наличие ЛКП на складе в ОМТС", 149, 12, 1046, smartProcessID, colors)
+		title := fmt.Sprintf("Проверить наличие ЛКП для заказа %s клиента %s", orderNumber, customer)
+		_, err = AddTaskToGroupColor(title, 149, 12, 1046, smartProcessID, colors)
 		if err != nil {
-			log.Printf("Error parsing color: %v", err)
-			return
-		}
-
-		err = pullCustomFieldInSmartProcess(true, 1046, smartProcessID, "ufCrm6_1734478701624", "да", arrayOfTasksIDsProducts)
-		if err != nil {
-			log.Printf("Error updating smart process: %v\n", err)
-			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
+			log.Printf("Error creating task with colors: %v\n", err)
+			http.Error(w, "Failed to create task", http.StatusInternalServerError)
 			return
 		}
 	} else {
-		_, err := AddTaskToGroupColor("задача в ОМТС с материалами из накладной", 149, 12, 1046, smartProcessID, nil)
+		title := fmt.Sprintf("Обработка заказа %s для клиента %s", orderNumber, customer)
+		_, err = AddTaskToGroupColor(title, 149, 12, 1046, smartProcessID, nil)
 		if err != nil {
-			log.Printf("Error updating smart process: %v\n", err)
+			log.Printf("Error creating task without colors: %v\n", err)
+			http.Error(w, "Failed to create task", http.StatusInternalServerError)
 			return
 		}
 	}
