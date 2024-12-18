@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // AddTaskToGroup создает задачу и возвращает ID созданной задачи
@@ -20,13 +21,18 @@ func AddTaskToGroup(title string, responsibleID, groupID, processTypeID, element
 	// Генерация ссылки смарт-процесса
 	smartProcessLink := GenerateSmartProcessLink(processTypeID, elementID)
 
+	// Вычисление DEADLINE: Текущая дата + 13 часов
+	currentTime := time.Now().Add(16 * time.Hour)
+	deadline := currentTime.Format("02.01.2006T15:04:05")
+
 	// Формирование тела запроса
-	requestBody := TaskRequest{
-		Fields: map[string]interface{}{
+	requestBody := map[string]interface{}{
+		"fields": map[string]interface{}{
 			"TITLE":          title,
 			"RESPONSIBLE_ID": responsibleID,
 			"GROUP_ID":       groupID,
 			"UF_CRM_TASK":    []string{smartProcessLink},
+			"DEADLINE":       deadline, // DEADLINE: текущая дата + 13 часов
 		},
 	}
 

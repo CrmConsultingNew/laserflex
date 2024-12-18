@@ -21,7 +21,7 @@ func AddCustomTaskToParentId(title string, responsibleID, groupID int, customFie
 	smartProcessLink := GenerateSmartProcessLink(1046, elementID)
 
 	// Вычисление DEADLINE: Текущая дата + 13 часов
-	currentTime := time.Now().Add(13 * time.Hour)
+	currentTime := time.Now().Add(16 * time.Hour)
 	deadline := currentTime.Format("02.01.2006T15:04:05")
 
 	// Подготовка тела запроса
