@@ -333,7 +333,7 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 			"UF_AUTO_552243496167": []string{customFields.Quantity}, // Кол-во
 			"DEADLINE":             deadline,                        // DEADLINE: текущая дата + 13 часов
 			"ALLOW_TIME_TRACKING":  "Y",                             // Обязательно строка "Y"
-			"TIME_ESTIMATE":        customFields.TimeEstimate,       // Передаем как число
+			"TIME_ESTIMATE":        customFields.TimeEstimate * 60,  // Передаем как число
 		},
 	}
 
