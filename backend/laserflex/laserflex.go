@@ -222,6 +222,7 @@ func processPipeCutting(orderNumber string, fileName string, smartProcessID int)
 }
 
 // processTaskCustom использует AddCustomTaskToParentId для обработки задач
+// processTaskCustom использует AddCustomTaskToParentId для обработки задач
 func processTaskCustom(orderNumber string, fileName string, smartProcessID int, taskType string, groupID int) ([]int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
@@ -325,10 +326,11 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 				row[headers["Труборез"]])
 		case "Гибочные работы":
 			// Используем timeToBendWorks для заголовка
-			for laserKey := range timeToBendWorks {
+			for laserKey, bendValue := range timeToBendWorks {
 				taskTitle = fmt.Sprintf("Гибка %s %s %s",
 					orderNumber,
-					laserKey)
+					laserKey,
+					bendValue)
 			}
 		default:
 			taskTitle = fmt.Sprintf("%s задача: %s",
