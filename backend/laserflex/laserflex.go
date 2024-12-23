@@ -12,6 +12,52 @@ import (
 	"time"
 )
 
+// Структуры для задачи
+type Task struct {
+	Title         string   `json:"TITLE"`
+	ResponsibleID int      `json:"RESPONSIBLE_ID"`
+	GroupID       int      `json:"GROUP_ID,omitempty"`
+	UfCrmTask     []string `json:"UF_CRM_TASK,omitempty"`
+}
+
+// Структура для создания задачи с полями
+type TaskWithParent struct {
+	Title         string           `json:"TITLE"`
+	ResponsibleID int              `json:"RESPONSIBLE_ID"`
+	GroupID       int              `json:"GROUP_ID,omitempty"`
+	ParentID      int              `json:"PARENT_ID"`
+	CustomFields  CustomTaskFields `json:"custom_fields,omitempty"`
+}
+
+// Структура для общего тела запроса
+type TaskRequest struct {
+	Fields map[string]interface{} `json:"fields"`
+}
+
+type TaskResponse struct {
+	Result struct {
+		Task struct {
+			ID json.RawMessage `json:"id"`
+		} `json:"task"`
+	} `json:"result"`
+}
+
+// Структура для пользовательских полей задачи
+type CustomTaskFields struct {
+	Quantity          string `json:"UF_AUTO_552243496167,omitempty"` // Кол-во
+	TemporaryOrderSum string `json:"UF_AUTO_555642596740,omitempty"` // Временная сумма заказа
+	OrderNumber       string `json:"UF_AUTO_303168834495,omitempty"` // № заказа
+	Customer          string `json:"UF_AUTO_876283676967,omitempty"` // Заказчик
+	Manager           string `json:"UF_AUTO_794809224848,omitempty"` // Менеджер
+	Material          string `json:"UF_AUTO_468857876599,omitempty"` // Материал
+	Bend              string `json:"UF_AUTO_726724682983,omitempty"` // Гибка
+	ProductionTask    string `json:"UF_AUTO_433735177517,omitempty"` // Произв. Задача
+	Comment           string `json:"UF_AUTO_497907774817,omitempty"` // Комментарий
+	Coating           string `json:"UF_AUTO_512869473370,omitempty"` // Покрытие
+	AllowTimeTracking string `json:"ALLOW_TIME_TRACKING,omitempty"`
+	TimeEstimate      int    `json:"TIME_ESTIMATE,omitempty"` //
+}
+
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	//order_number={{№ заказа}}&deadline={{Срок сдачи}}
 	log.Println("Connection is starting...")
@@ -286,8 +332,8 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 			"UF_AUTO_497907774817": []string{customFields.Comment},  // Комментарий
 			"UF_AUTO_552243496167": []string{customFields.Quantity}, // Кол-во
 			"DEADLINE":             deadline,                        // DEADLINE: текущая дата + 13 часов
-			"ALLOW_TIME_TRACKING":  []string{customFields.AllowTimeTracking},
-			"TIME_ESTIMATE":        []int{customFields.TimeEstimate},
+			"ALLOW_TIME_TRACKING":  "Y",                             // Обязательно строка "Y"
+			"TIME_ESTIMATE":        customFields.TimeEstimate,       // Передаем как число
 		},
 	}
 
@@ -296,6 +342,8 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 	if err != nil {
 		return 0, fmt.Errorf("error marshalling request body: %v", err)
 	}
+
+	log.Printf("Request Body: %s", string(jsonData))
 
 	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -315,7 +363,7 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 		return 0, fmt.Errorf("error reading response body: %v", err)
 	}
 
-	log.Printf("Attention!!!!!!!!! AddCustomTaskToParentId Response from Bitrix24: %s\n", string(responseData))
+	log.Printf("Response from Bitrix24: %s\n", string(responseData))
 
 	// Разбираем ответ
 	var response TaskResponse
@@ -326,22 +374,9 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 	// Обрабатываем ID задачи
 	var taskID int
 	if err := json.Unmarshal(response.Result.Task.ID, &taskID); err != nil {
-		// Если ID строка, конвертируем в число
-		var taskIDStr string
-		if err := json.Unmarshal(response.Result.Task.ID, &taskIDStr); err != nil {
-			return 0, fmt.Errorf("error parsing task id: %v", err)
-		}
-		taskID, err = strconv.Atoi(taskIDStr)
-		if err != nil {
-			return 0, fmt.Errorf("error converting task id to int: %v", err)
-		}
+		return 0, fmt.Errorf("error parsing task id: %v", err)
 	}
 
-	if taskID == 0 {
-		return 0, fmt.Errorf("failed to create subtask, response: %s", string(responseData))
-	}
-
-	log.Printf("Subtask created with ID: %d\n", taskID)
 	return taskID, nil
 }
 
