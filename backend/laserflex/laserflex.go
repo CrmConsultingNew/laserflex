@@ -286,16 +286,13 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 				orderNumber,
 				row[headers[taskType]])
 		case "Труборез":
-			taskTitle = fmt.Sprintf("%s %s %s %s",
+			taskTitle = fmt.Sprintf("%s %s",
 				orderNumber,
-				row[headers["Заказчик"]],
-				row[headers[taskType]],
-				row[headers["Количество материала"]])
+				row[headers[taskType]])
 		case "Гибочные работы":
-			taskTitle = fmt.Sprintf("Гибка %s %s %s",
-				row[headers[taskType]],
+			taskTitle = fmt.Sprintf("Гибка %s %s",
 				orderNumber,
-				row[headers["Заказчик"]])
+				row[headers[taskType]])
 		default:
 			taskTitle = fmt.Sprintf("%s задача: %s",
 				taskType, row[headers[taskType]])
