@@ -387,7 +387,7 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 			"RESPONSIBLE_ID":       responsibleID,
 			"GROUP_ID":             groupID,
 			"UF_CRM_TASK":          []string{smartProcessLink},
-			"UF_AUTO_303168834495": orderNumber,                     // № заказа
+			"UF_AUTO_303168834495": []string{orderNumber},           // № заказа
 			"UF_AUTO_876283676967": []string{customFields.Customer}, // Заказчик
 			"UF_AUTO_794809224848": []string{customFields.Manager},  // Менеджер
 			"UF_AUTO_468857876599": []string{customFields.Material}, // Материал
