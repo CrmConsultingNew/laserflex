@@ -200,16 +200,14 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 		"Заказчик":             -1,
 		"Количество материала": -1,
 		taskType:               -1,
-		"Время лазерных работ": -1, // Добавляем столбец для времени
+		"Лазерные работы":      -1, // Добавляем столбец для "Лазерные работы"
+		"Время лазерных работ": -1,
 	}
 
 	// Поиск заголовков
 	for i, cell := range rows[0] {
-		for header := range headers {
-			if cell == header {
-				headers[header] = i
-				break
-			}
+		if _, ok := headers[cell]; ok {
+			headers[cell] = i
 		}
 	}
 
@@ -250,26 +248,18 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 
 		// Формируем заголовок задачи на основе taskType
 		taskTitle := ""
-		switch taskType {
-		case "Лазерные работы":
-			taskTitle = fmt.Sprintf("%s %s",
-				orderNumber,
-				row[headers[taskType]])
-		case "Труборез":
-			taskTitle = fmt.Sprintf("%s %s",
-				orderNumber,
-				row[headers[taskType]])
-		case "Гибочные работы":
-			taskTitle = fmt.Sprintf("Гибка %s %s",
-				orderNumber,
-				row[headers[taskType]])
-		default:
-			taskTitle = fmt.Sprintf("%s задача: %s",
-				taskType, row[headers[taskType]])
+		if taskType == "Гибочные работы" {
+			cellOfLaserWorksValue := ""
+			if headers["Лазерные работы"] < len(row) {
+				cellOfLaserWorksValue = row[headers["Лазерные работы"]]
+			}
+			taskTitle = fmt.Sprintf("Гибка %s %s", orderNumber, cellOfLaserWorksValue)
+		} else {
+			taskTitle = fmt.Sprintf("%s %s", orderNumber, row[headers[taskType]])
 		}
 
 		customFields := CustomTaskFields{
-			OrderNumber:       row[headers["№ заказа"]],
+			OrderNumber:       row[headers["Заказчик"]],
 			Customer:          row[headers["Заказчик"]],
 			Quantity:          row[headers["Количество материала"]],
 			Material:          row[headers[taskType]],
