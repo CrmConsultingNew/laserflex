@@ -280,19 +280,32 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 
 		// Формируем заголовок задачи на основе taskType
 		taskTitle := ""
+		var laserWorkValue string
+
+		// Формирование заголовка задачи
 		switch taskType {
 		case "Лазерные работы":
+			// Сохраняем значение для "Лазерные работы"
+			laserWorkValue = row[headers[taskType]]
 			taskTitle = fmt.Sprintf("%s %s",
 				orderNumber,
-				row[headers[taskType]])
+				laserWorkValue)
 		case "Труборез":
 			taskTitle = fmt.Sprintf("%s %s",
 				orderNumber,
 				row[headers[taskType]])
 		case "Гибочные работы":
-			taskTitle = fmt.Sprintf("Гибка %s %s",
-				orderNumber,
-				row[headers[taskType]])
+			// Используем сохраненное значение из "Лазерные работы"
+			if laserWorkValue != "" {
+				taskTitle = fmt.Sprintf("Гибка %s %s",
+					orderNumber,
+					laserWorkValue)
+			} else {
+				// Если значение "Лазерные работы" отсутствует, используем стандартное
+				taskTitle = fmt.Sprintf("Гибка %s %s",
+					orderNumber,
+					row[headers[taskType]])
+			}
 		default:
 			taskTitle = fmt.Sprintf("%s задача: %s",
 				taskType, row[headers[taskType]])
