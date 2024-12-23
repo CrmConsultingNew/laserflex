@@ -128,21 +128,23 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Лазерные работы ID
-	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734471089453", arrayOfTasksIDsLaser)
+	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471089453", "да", arrayOfTasksIDsLaser)
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
 		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
 		return
 	}
 
-	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1733265874338", arrayOfTasksIDsBend)
+	// Гибочные работы ID
+	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsBend) // Используем правильную переменную!
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
 		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
 		return
 	}
 
-	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734471206084", arrayOfTasksIDsPipeCutting)
+	// Труборез ID
+	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsPipeCutting) // Используем правильную переменную!
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
 		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
@@ -163,7 +165,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Обновляем смарт-процесс
-		err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734478701624", nil)
+		err = pullCustomFieldInSmartProcess(true, 1046, smartProcessID, "ufCrm6_1734478701624", "да", nil)
 		if err != nil {
 			log.Printf("Error updating smart process: %v\n", err)
 			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
@@ -216,7 +218,7 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 		"Гибочные работы":      -1,
 		"Заказчик":             -1,
 		"Количество материала": -1,
-		taskType: -1,
+		taskType:               -1,
 	}
 
 	// Поиск заголовков
@@ -392,7 +394,7 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 	return taskID, nil
 }
 
-func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName string, tasksIDs []int) error {
+func pullCustomFieldInSmartProcess(checkCoating bool, entityTypeId, smartProcessID int, fieldName, fieldValue string, tasksIDs []int) error {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "crm.item.update"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -408,15 +410,26 @@ func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName s
 		stringTasksIDs[i] = strconv.Itoa(id)
 	}
 
+	if checkCoating == true {
+
+	}
 	// Обновляем значение полей в запросе
 	requestBody := map[string]interface{}{
 		"entityTypeId": entityTypeId,
 		"id":           smartProcessID,
 		"fields": map[string]interface{}{
-			fieldName: stringTasksIDs,
+			fieldName: stringTasksIDs, // Используем динамическое имя поля
 		},
 	}
-
+	if checkCoating == true {
+		requestBody = map[string]interface{}{
+			"entityTypeId": entityTypeId,
+			"id":           smartProcessID,
+			"fields": map[string]interface{}{
+				"ufCrm6_1733264270": "да", // Используем динамическое имя поля
+			},
+		}
+	}
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return fmt.Errorf("error marshalling request body: %v", err)
