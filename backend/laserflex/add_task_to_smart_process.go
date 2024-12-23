@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/xuri/excelize/v2"
 	"io"
 	"log"
 	"net/http"
@@ -93,105 +92,4 @@ func AddCustomTaskToParentId(title string, responsibleID, groupID int, customFie
 
 	log.Printf("Subtask created with ID: %d\n", taskID)
 	return taskID, nil
-}
-
-func processLaser(fileName string, smartProcessID, engineerID int) (int, error) {
-	f, err := excelize.OpenFile(fileName)
-	if err != nil {
-		return 0, fmt.Errorf("error opening file: %v", err)
-	}
-	defer f.Close()
-
-	rows, err := f.GetRows("Реестр")
-	if err != nil {
-		return 0, fmt.Errorf("error reading rows: %v", err)
-	}
-
-	// Определяем индексы заголовков
-	headers := map[string]int{
-		"Производство":         -1,
-		"Нанесение покрытий":   -1,
-		"№ заказа":             -1,
-		"Заказчик":             -1,
-		"Менеджер":             -1,
-		"Комментарий":          -1,
-		"Количество материала": -1,
-	}
-
-	// Поиск заголовков
-	for i, cell := range rows[0] {
-		for header := range headers {
-			if cell == header {
-				headers[header] = i
-				break
-			}
-		}
-	}
-
-	// Проверяем наличие всех необходимых заголовков
-	for header, index := range headers {
-		if index == -1 {
-			return 0, fmt.Errorf("missing required header: %s", header)
-		}
-	}
-
-	// ID основной задачи "Производство"
-	taskID, err := AddTaskToGroup("Производство", engineerID, 2, 1046, smartProcessID)
-	if err != nil {
-		return 0, fmt.Errorf("error creating main production task: %v", err)
-	}
-
-	// Используем map для проверки уникальности
-	uniqueChecklistItems := make(map[string]struct{})
-
-	// Обработка строк и добавление чек-листов
-	for _, row := range rows[1:] {
-		// Проверяем пустоту строки
-		isEmptyRow := true
-		for _, cell := range row {
-			if cell != "" {
-				isEmptyRow = false
-				break
-			}
-		}
-		if isEmptyRow {
-			break
-		}
-
-		// Получаем значения ячеек
-		productionCell := row[headers["Производство"]]
-		coatingCell := row[headers["Нанесение покрытий"]]
-
-		// Проверяем и добавляем элементы из "Производство"
-		if productionCell != "" {
-			if _, exists := uniqueChecklistItems[productionCell]; !exists {
-				uniqueChecklistItems[productionCell] = struct{}{}
-				_, err := AddCheckListToTheTask(taskID, productionCell)
-				if err != nil {
-					log.Printf("Error adding checklist item from 'Производство': %v\n", err)
-				}
-			}
-		}
-
-		// Проверяем и добавляем элементы из "Нанесение покрытий"
-		if coatingCell != "" {
-			if _, exists := uniqueChecklistItems[coatingCell]; !exists {
-				uniqueChecklistItems[coatingCell] = struct{}{}
-				_, err := AddCheckListToTheTask(taskID, coatingCell)
-				if err != nil {
-					log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
-				}
-			}
-		}
-	}
-
-	return taskID, nil
-}
-
-func HandlerAddCustomTaskToParentId(w http.ResponseWriter, r *http.Request) {
-	products, err := processProducts("file.xlsx", 688, 149)
-	if err != nil {
-		log.Printf("Error processing products: %v\n", err)
-	}
-	fmt.Fprintf(w, "Products processed successfully: %v", products)
 }
