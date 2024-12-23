@@ -170,7 +170,8 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 	headers := map[string]int{
 		"Заказчик":             -1,
 		"Количество материала": -1,
-		taskType: -1,
+		taskType:               -1,
+		"Время лазерных работ": -1, // Добавляем столбец для времени
 	}
 
 	// Поиск заголовков
@@ -210,6 +211,14 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 			continue
 		}
 
+		// Преобразуем время из строки в int
+		timeEstimateStr := row[headers["Время лазерных работ"]]
+		timeEstimate, err := strconv.Atoi(timeEstimateStr)
+		if err != nil {
+			log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
+			continue
+		}
+
 		// Формируем заголовок задачи на основе taskType
 		taskTitle := ""
 		switch taskType {
@@ -236,7 +245,7 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 			Quantity:          row[headers["Количество материала"]],
 			Material:          row[headers[taskType]],
 			AllowTimeTracking: "Y",
-			TimeEstimate:      row[headers["Время лазерных работ"]],
+			TimeEstimate:      timeEstimate, // Используем преобразованное значение
 		}
 
 		// Создаём задачу
@@ -278,7 +287,7 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 			"UF_AUTO_552243496167": []string{customFields.Quantity}, // Кол-во
 			"DEADLINE":             deadline,                        // DEADLINE: текущая дата + 13 часов
 			"ALLOW_TIME_TRACKING":  []string{customFields.AllowTimeTracking},
-			"TIME_ESTIMATE":        []string{customFields.TimeEstimate},
+			"TIME_ESTIMATE":        []int{customFields.TimeEstimate},
 		},
 	}
 
