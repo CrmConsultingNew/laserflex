@@ -147,7 +147,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	if CheckCoatingColumn(fileName) {
 		// Если есть данные, получаем цвета из "Цвет/цинк"
 		colors := ParseSheetForColorColumn(fileName)
-		_, err := AddTaskToGroupColor("Проверить наличие ЛКП на складе в ОМТС", 149, 12, 1046, smartProcessID, colors)
+		_, err := AddTaskToGroupColor(orderNumber, "Проверить наличие ЛКП на складе в ОМТС", 149, 12, 1046, smartProcessID, colors)
 		if err != nil {
 			log.Printf("Error creating task with colors: %v", err)
 			http.Error(w, "Failed to create task with colors", http.StatusInternalServerError)
@@ -156,7 +156,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		// Если данных нет, создаём задачу без цветов
-		_, err := AddTaskToGroupColor("Задача в ОМТС с материалами из накладной", 149, 12, 1046, smartProcessID, nil)
+		_, err := AddTaskToGroupColor(orderNumber, "Задача в ОМТС с материалами из накладной", 149, 12, 1046, smartProcessID, nil)
 		if err != nil {
 			log.Printf("Error creating task without colors: %v", err)
 			http.Error(w, "Failed to create task without colors", http.StatusInternalServerError)
