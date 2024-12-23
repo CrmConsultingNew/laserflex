@@ -214,11 +214,10 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 	}
 
 	headers := map[string]int{
-		"Лазерные работы":      -1, // Для Гибочных работ
-		"Гибочные работы":      -1,
 		"Заказчик":             -1,
 		"Количество материала": -1,
 		taskType:               -1,
+		"Время лазерных работ": -1, // Добавляем столбец для времени
 	}
 
 	// Поиск заголовков
@@ -233,7 +232,7 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 
 	// Проверяем наличие всех необходимых заголовков
 	for header, index := range headers {
-		if index == -1 && header != "Лазерные работы" {
+		if index == -1 {
 			return nil, fmt.Errorf("missing required header: %s", header)
 		}
 	}
@@ -258,63 +257,50 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 			continue
 		}
 
-		// Для типа задач "Гибочные работы"
-		if taskType == "Гибочные работы" {
-			// Получаем значения "Лазерные работы" и "Гибочные работы"
-			var laserWorksCellValue string
-			if headers["Лазерные работы"] != -1 && len(row) > headers["Лазерные работы"] {
-				laserWorksCellValue = row[headers["Лазерные работы"]]
-			}
-
-			timeEstimateStr := row[headers["Гибочные работы"]]
-			timeEstimate, err := strconv.Atoi(timeEstimateStr)
-			if err != nil {
-				log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
-				continue
-			}
-
-			taskTitle := fmt.Sprintf("Гибка %s %s", orderNumber, laserWorksCellValue)
-
-			customFields := CustomTaskFields{
-				OrderNumber:       row[headers["Заказчик"]],
-				Customer:          row[headers["Количество материала"]],
-				Material:          laserWorksCellValue,
-				AllowTimeTracking: "Y",
-				TimeEstimate:      timeEstimate,
-			}
-
-			taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
-			if err != nil {
-				log.Printf("Error creating %s task: %v\n", taskType, err)
-				continue
-			}
-			taskIDs = append(taskIDs, taskID)
-		} else {
-			// Стандартная обработка для других типов задач
-			timeEstimateStr := row[headers["Время лазерных работ"]]
-			timeEstimate, err := strconv.Atoi(timeEstimateStr)
-			if err != nil {
-				log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
-				continue
-			}
-
-			taskTitle := fmt.Sprintf("%s %s", orderNumber, row[headers[taskType]])
-
-			customFields := CustomTaskFields{
-				OrderNumber:       row[headers["Заказчик"]],
-				Customer:          row[headers["Количество материала"]],
-				Material:          row[headers[taskType]],
-				AllowTimeTracking: "Y",
-				TimeEstimate:      timeEstimate,
-			}
-
-			taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
-			if err != nil {
-				log.Printf("Error creating %s task: %v\n", taskType, err)
-				continue
-			}
-			taskIDs = append(taskIDs, taskID)
+		// Преобразуем время из строки в int
+		timeEstimateStr := row[headers["Время лазерных работ"]]
+		timeEstimate, err := strconv.Atoi(timeEstimateStr)
+		if err != nil {
+			log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
+			continue
 		}
+
+		// Формируем заголовок задачи на основе taskType
+		taskTitle := ""
+		switch taskType {
+		case "Лазерные работы":
+			taskTitle = fmt.Sprintf("%s %s",
+				orderNumber,
+				row[headers[taskType]])
+		case "Труборез":
+			taskTitle = fmt.Sprintf("%s %s",
+				orderNumber,
+				row[headers[taskType]])
+		case "Гибочные работы":
+			taskTitle = fmt.Sprintf("Гибка %s %s",
+				orderNumber,
+				row[headers[taskType]])
+		default:
+			taskTitle = fmt.Sprintf("%s задача: %s",
+				taskType, row[headers[taskType]])
+		}
+
+		customFields := CustomTaskFields{
+			OrderNumber:       row[headers["№ заказа"]],
+			Customer:          row[headers["Заказчик"]],
+			Quantity:          row[headers["Количество материала"]],
+			Material:          row[headers[taskType]],
+			AllowTimeTracking: "Y",
+			TimeEstimate:      timeEstimate, // Используем преобразованное значение
+		}
+
+		// Создаём задачу
+		taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
+		if err != nil {
+			log.Printf("Error creating %s task: %v\n", taskType, err)
+			continue
+		}
+		taskIDs = append(taskIDs, taskID)
 	}
 
 	return taskIDs, nil
