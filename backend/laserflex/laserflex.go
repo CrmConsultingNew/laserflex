@@ -235,6 +235,8 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 	}
 
 	headers := map[string]int{
+		"Гибочные работы":      -1,
+		"Лазерные работы":      -1,
 		"№ заказа":             -1,
 		"Заказчик":             -1,
 		"Количество материала": -1,
@@ -256,6 +258,38 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 		if index == -1 {
 			return nil, fmt.Errorf("missing required header: %s", header)
 		}
+	}
+
+	// Сбор данных из "Гибочные работы" и "Лазерные работы"
+	timeToBendWorks := make(map[string]string)
+	var bendWorkValues, laserWorkValues []string
+
+	for _, row := range rows[1:] {
+		// Если строка пуста, завершаем обработку
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
+		}
+
+		// Получаем значения из "Гибочные работы" и "Лазерные работы"
+		if headers["Гибочные работы"] < len(row) && row[headers["Гибочные работы"]] != "" {
+			bendWorkValues = append(bendWorkValues, row[headers["Гибочные работы"]])
+		}
+
+		if headers["Лазерные работы"] < len(row) && row[headers["Лазерные работы"]] != "" {
+			laserWorkValues = append(laserWorkValues, row[headers["Лазерные работы"]])
+		}
+	}
+
+	// Сопоставляем значения
+	for i := 0; i < len(bendWorkValues) && i < len(laserWorkValues); i++ {
+		timeToBendWorks[laserWorkValues[i]] = bendWorkValues[i]
 	}
 
 	// Массив для хранения ID созданных задач
@@ -280,31 +314,22 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 
 		// Формируем заголовок задачи на основе taskType
 		taskTitle := ""
-		var laserWorkValue string
-
-		// Формирование заголовка задачи
 		switch taskType {
 		case "Лазерные работы":
-			// Сохраняем значение для "Лазерные работы"
-			laserWorkValue = row[headers[taskType]]
 			taskTitle = fmt.Sprintf("%s %s",
 				orderNumber,
-				laserWorkValue)
+				row[headers["Лазерные работы"]])
 		case "Труборез":
 			taskTitle = fmt.Sprintf("%s %s",
 				orderNumber,
-				row[headers[taskType]])
+				row[headers["Труборез"]])
 		case "Гибочные работы":
-			// Используем сохраненное значение из "Лазерные работы"
-			if laserWorkValue != "" {
-				taskTitle = fmt.Sprintf("Гибка %s %s",
+			// Используем timeToBendWorks для заголовка
+			for laserKey, bendValue := range timeToBendWorks {
+				taskTitle = fmt.Sprintf("Гибка %s %s %s",
 					orderNumber,
-					laserWorkValue)
-			} else {
-				// Если значение "Лазерные работы" отсутствует, используем стандартное
-				taskTitle = fmt.Sprintf("Гибка %s %s",
-					orderNumber,
-					row[headers[taskType]])
+					laserKey,
+					bendValue)
 			}
 		default:
 			taskTitle = fmt.Sprintf("%s задача: %s",
