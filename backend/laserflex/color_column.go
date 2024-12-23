@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func parseSheetForColorColumn(fileName string) []string {
+func ParseSheetForColorColumn(fileName string) []string {
 	// Открываем файл
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {

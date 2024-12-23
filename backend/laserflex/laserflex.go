@@ -131,32 +131,26 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471089453", "да", arrayOfTasksIDsLaser)
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
-		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
-		return
 	}
 
 	// Гибочные работы ID
 	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsBend) // Используем правильную переменную!
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
-		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
-		return
 	}
 
 	// Труборез ID
 	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsPipeCutting) // Используем правильную переменную!
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
-		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
-		return
 	}
 
 	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
 
 	// Проверяем наличие данных в столбце "Нанесение покрытий"
-	if checkCoatingColumn(fileName) {
+	if CheckCoatingColumn(fileName) {
 		// Если есть данные, получаем цвета из "Цвет/цинк"
-		colors := parseSheetForColorColumn(fileName)
+		colors := ParseSheetForColorColumn(fileName)
 		_, err := AddTaskToGroupColor("Проверить наличие ЛКП на складе в ОМТС", 149, 12, 1046, smartProcessID, colors)
 		if err != nil {
 			log.Printf("Error creating task with colors: %v", err)

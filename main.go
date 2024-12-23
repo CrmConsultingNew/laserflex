@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-
-
-
 func main() {
 
 	//laserflex.StartJsonConverterFromExcel("file.xlsx")
@@ -25,6 +22,26 @@ func main() {
 	laserflex.ReadXlsProductRow("file_downloaded_xls1.xlsx")
 	return*/
 
+	/*fileName := "file.xlsx"
+	if laserflex.CheckCoatingColumn(fileName) {
+		// Если есть данные, получаем цвета из "Цвет/цинк"
+		colors := laserflex.ParseSheetForColorColumn(fileName)
+		_, err := laserflex.AddTaskToGroupColor("Проверить наличие ЛКП на складе в ОМТС", 149, 12, 1046, 791, colors)
+		if err != nil {
+			log.Printf("Error creating task with colors: %v", err)
+			return
+		}
+
+	} else {
+		// Если данных нет, создаём задачу без цветов
+		_, err := laserflex.AddTaskToGroupColor("Задача в ОМТС с материалами из накладной", 149, 12, 1046, 791, nil)
+		if err != nil {
+			log.Printf("Error creating task without colors: %v", err)
+			return
+		}
+	}
+
+	return*/
 	fmt.Println("service starting...")
 
 	// Загрузка переменных окружения из файла .env

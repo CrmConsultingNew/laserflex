@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func checkCoatingColumn(fileName string) bool {
+func CheckCoatingColumn(fileName string) bool {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		log.Printf("Error opening Excel file: %v", err)
@@ -34,11 +34,22 @@ func checkCoatingColumn(fileName string) bool {
 		return false
 	}
 
-	// Проверяем наличие заполненных ячеек
+	// Проверяем наличие заполненных ячеек и выводим их
+	var foundValues []string
 	for _, row := range rows[1:] {
-		if len(row) > coatingColumnIndex && strings.TrimSpace(row[coatingColumnIndex]) != "" {
-			return true
+		if len(row) > coatingColumnIndex {
+			value := strings.TrimSpace(row[coatingColumnIndex])
+			if value != "" {
+				foundValues = append(foundValues, value)
+			}
 		}
 	}
+
+	if len(foundValues) > 0 {
+		log.Printf("Found values in 'Нанесение покрытий': %v", foundValues)
+		return true
+	}
+
+	log.Println("No values found in 'Нанесение покрытий'")
 	return false
 }
