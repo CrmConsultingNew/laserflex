@@ -175,7 +175,96 @@ func processLaserWorks(orderNumber string, fileName string, smartProcessID int) 
 
 // processBendWorks обрабатывает столбец "Гибочные работы"
 func processBendWorks(orderNumber string, fileName string, smartProcessID int) ([]int, error) {
-	return processTaskCustom(orderNumber, fileName, smartProcessID, "Гибочные работы", 10)
+	f, err := excelize.OpenFile(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	rows, err := f.GetRows("Реестр")
+	if err != nil {
+		return nil, fmt.Errorf("error reading rows: %v", err)
+	}
+
+	headers := map[string]int{
+		"Заказчик":             -1,
+		"Количество материала": -1,
+		"Гибочные работы":      -1,
+		"Лазерные работы":      -1,
+	}
+
+	// Поиск заголовков
+	for i, cell := range rows[0] {
+		if _, ok := headers[cell]; ok {
+			headers[cell] = i
+		}
+	}
+
+	// Проверяем наличие всех необходимых заголовков
+	for header, index := range headers {
+		if index == -1 {
+			return nil, fmt.Errorf("missing required header: %s", header)
+		}
+	}
+
+	// Массив для хранения ID созданных задач
+	var taskIDs []int
+
+	// Обработка строк
+	for _, row := range rows[1:] {
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
+		}
+
+		if headers["Гибочные работы"] >= len(row) || row[headers["Гибочные работы"]] == "" {
+			continue
+		}
+
+		// Получаем значения для заголовка задачи и пользовательских полей
+		laserWorksValue := ""
+		if headers["Лазерные работы"] < len(row) {
+			laserWorksValue = row[headers["Лазерные работы"]]
+		}
+
+		materialValue := ""
+		if headers["Количество материала"] < len(row) {
+			materialValue = row[headers["Количество материала"]]
+		}
+
+		timeEstimateStr := row[headers["Гибочные работы"]]
+		timeEstimate, err := strconv.Atoi(timeEstimateStr)
+		if err != nil {
+			log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
+			continue
+		}
+
+		taskTitle := fmt.Sprintf("Гибка %s %s", orderNumber, laserWorksValue)
+
+		customFields := CustomTaskFields{
+			OrderNumber:       orderNumber,
+			Customer:          row[headers["Заказчик"]],
+			Material:          materialValue, // Используем значение из столбца "Количество материала"
+			AllowTimeTracking: "Y",
+			TimeEstimate:      timeEstimate,
+		}
+
+		// Создаём задачу
+		taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, 10, customFields, smartProcessID)
+		if err != nil {
+			log.Printf("Error creating BendWorks task: %v\n", err)
+			continue
+		}
+		taskIDs = append(taskIDs, taskID)
+	}
+
+	return taskIDs, nil
 }
 
 // processPipeCutting обрабатывает столбец "Труборез"
