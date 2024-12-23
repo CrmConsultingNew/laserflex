@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -102,24 +101,21 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2
-	// ID группы 1 - Лазерные работы
-	// ID группы 11 - Труборез
-	// ID группы 10 - Гибочные работы
-	// ID группы 2 - Производство
+
 	var arrayOfTasksIDsLaser []int
 	var arrayOfTasksIDsBend []int
 	var arrayOfTasksIDsPipeCutting []int
 	var arrayOfTasksIDsProducts []int
 	// Обрабатываем задачи и собираем их ID
-	if taskIDs, err := ParseLaserTasks(orderNumber, fileName, smartProcessID, 1); err == nil {
+	if taskIDs, err := processLaserWorks(orderNumber, fileName, smartProcessID); err == nil {
 		arrayOfTasksIDsLaser = append(arrayOfTasksIDsLaser, taskIDs...)
 	}
 
-	if taskIDs, err := ParseBendTasks(orderNumber, fileName, smartProcessID, 10); err == nil {
+	if taskIDs, err := processBendWorks(orderNumber, fileName, smartProcessID); err == nil {
 		arrayOfTasksIDsBend = append(arrayOfTasksIDsBend, taskIDs...)
 	}
 
-	if taskIDs, err := ParsePipeCuttingTasks(orderNumber, fileName, smartProcessID, 11); err == nil {
+	if taskIDs, err := processPipeCutting(orderNumber, fileName, smartProcessID); err == nil {
 		arrayOfTasksIDsPipeCutting = append(arrayOfTasksIDsPipeCutting, taskIDs...)
 	}
 
@@ -172,138 +168,23 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("File processed successfully"))
 }
 
-func ParseLaserTasks(orderNumber, fileName string, smartProcessID, groupID int) ([]int, error) {
-	f, err := excelize.OpenFile(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("error opening file: %v", err)
-	}
-	defer f.Close()
-
-	rows, err := f.GetRows("Реестр")
-	if err != nil {
-		return nil, fmt.Errorf("error reading rows: %v", err)
-	}
-
-	headers := map[string]int{
-		"Лазерные работы":      -1,
-		"Заказчик":             -1,
-		"Количество материала": -1,
-		"Время лазерных работ": -1,
-	}
-
-	for i, cell := range rows[0] {
-		if _, exists := headers[cell]; exists {
-			headers[cell] = i
-		}
-	}
-
-	if headers["Лазерные работы"] == -1 || headers["Время лазерных работ"] == -1 {
-		return nil, fmt.Errorf("missing required headers for Laser Tasks")
-	}
-
-	var taskIDs []int
-	for _, row := range rows[1:] {
-		if len(row) <= headers["Лазерные работы"] || row[headers["Лазерные работы"]] == "" {
-			continue
-		}
-
-		timeEstimateStr := row[headers["Время лазерных работ"]]
-		timeEstimate, err := strconv.Atoi(strings.TrimSpace(timeEstimateStr))
-		if err != nil {
-			log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
-			continue
-		}
-
-		taskTitle := fmt.Sprintf("%s %s", orderNumber, row[headers["Лазерные работы"]])
-		customFields := CustomTaskFields{
-			OrderNumber:       orderNumber,
-			Customer:          row[headers["Заказчик"]],
-			Quantity:          row[headers["Количество материала"]],
-			Material:          row[headers["Лазерные работы"]],
-			AllowTimeTracking: "Y",
-			TimeEstimate:      timeEstimate,
-		}
-
-		taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
-		if err != nil {
-			log.Printf("Error creating Laser Task: %v", err)
-			continue
-		}
-		taskIDs = append(taskIDs, taskID)
-	}
-	return taskIDs, nil
+// processLaserWorks обрабатывает столбец "Лазерные работы"
+func processLaserWorks(orderNumber string, fileName string, smartProcessID int) ([]int, error) {
+	return processTaskCustom(orderNumber, fileName, smartProcessID, "Лазерные работы", 1)
 }
 
-// Обработка "Гибочные работы"
-func ParseBendTasks(orderNumber, fileName string, smartProcessID, groupID int) ([]int, error) {
-	f, err := excelize.OpenFile(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("error opening file: %v", err)
-	}
-	defer f.Close()
-
-	rows, err := f.GetRows("Реестр")
-	if err != nil {
-		return nil, fmt.Errorf("error reading rows: %v", err)
-	}
-
-	headers := map[string]int{
-		"Лазерные работы":      -1,
-		"Гибочные работы":      -1,
-		"Заказчик":             -1,
-		"Количество материала": -1,
-	}
-
-	for i, cell := range rows[0] {
-		if _, exists := headers[cell]; exists {
-			headers[cell] = i
-		}
-	}
-
-	if headers["Гибочные работы"] == -1 {
-		return nil, fmt.Errorf("missing required headers for Bend Tasks")
-	}
-
-	var taskIDs []int
-	for _, row := range rows[1:] {
-		if len(row) <= headers["Гибочные работы"] || row[headers["Гибочные работы"]] == "" {
-			continue
-		}
-
-		laserValue := ""
-		if headers["Лазерные работы"] != -1 && len(row) > headers["Лазерные работы"] {
-			laserValue = row[headers["Лазерные работы"]]
-		}
-
-		timeEstimateStr := row[headers["Гибочные работы"]]
-		timeEstimate, err := strconv.Atoi(strings.TrimSpace(timeEstimateStr))
-		if err != nil {
-			log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
-			continue
-		}
-
-		taskTitle := fmt.Sprintf("Гибка %s %s", orderNumber, laserValue)
-		customFields := CustomTaskFields{
-			OrderNumber:       orderNumber,
-			Customer:          row[headers["Заказчик"]],
-			Quantity:          row[headers["Количество материала"]],
-			Material:          laserValue,
-			AllowTimeTracking: "Y",
-			TimeEstimate:      timeEstimate,
-		}
-
-		taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
-		if err != nil {
-			log.Printf("Error creating Bend Task: %v", err)
-			continue
-		}
-		taskIDs = append(taskIDs, taskID)
-	}
-	return taskIDs, nil
+// processBendWorks обрабатывает столбец "Гибочные работы"
+func processBendWorks(orderNumber string, fileName string, smartProcessID int) ([]int, error) {
+	return processTaskCustom(orderNumber, fileName, smartProcessID, "Гибочные работы", 10)
 }
 
-// Обработка "Труборез"
-func ParsePipeCuttingTasks(orderNumber, fileName string, smartProcessID, groupID int) ([]int, error) {
+// processPipeCutting обрабатывает столбец "Труборез"
+func processPipeCutting(orderNumber string, fileName string, smartProcessID int) ([]int, error) {
+	return processTaskCustom(orderNumber, fileName, smartProcessID, "Труборез", 11)
+}
+
+// processTaskCustom использует AddCustomTaskToParentId для обработки задач
+func processTaskCustom(orderNumber string, fileName string, smartProcessID int, taskType string, groupID int) ([]int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %v", err)
@@ -316,52 +197,95 @@ func ParsePipeCuttingTasks(orderNumber, fileName string, smartProcessID, groupID
 	}
 
 	headers := map[string]int{
-		"Труборез":             -1,
 		"Заказчик":             -1,
 		"Количество материала": -1,
-		"Время лазерных работ": -1,
+		taskType:               -1,
+		"Время лазерных работ": -1, // Добавляем столбец для времени
 	}
 
+	// Поиск заголовков
 	for i, cell := range rows[0] {
-		if _, exists := headers[cell]; exists {
-			headers[cell] = i
+		for header := range headers {
+			if cell == header {
+				headers[header] = i
+				break
+			}
 		}
 	}
 
-	if headers["Труборез"] == -1 {
-		return nil, fmt.Errorf("missing required headers for Pipe Cutting Tasks")
+	// Проверяем наличие всех необходимых заголовков
+	for header, index := range headers {
+		if index == -1 {
+			return nil, fmt.Errorf("missing required header: %s", header)
+		}
 	}
 
+	// Массив для хранения ID созданных задач
 	var taskIDs []int
+
+	// Обработка строк
 	for _, row := range rows[1:] {
-		if len(row) <= headers["Труборез"] || row[headers["Труборез"]] == "" {
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
+		}
+
+		if headers[taskType] >= len(row) || row[headers[taskType]] == "" {
 			continue
 		}
 
+		// Преобразуем время из строки в int
 		timeEstimateStr := row[headers["Время лазерных работ"]]
-		timeEstimate, err := strconv.Atoi(strings.TrimSpace(timeEstimateStr))
+		timeEstimate, err := strconv.Atoi(timeEstimateStr)
 		if err != nil {
 			log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
 			continue
 		}
 
-		taskTitle := fmt.Sprintf("%s %s", orderNumber, row[headers["Труборез"]])
-		customFields := CustomTaskFields{
-			OrderNumber:       orderNumber,
-			Customer:          row[headers["Заказчик"]],
-			Quantity:          row[headers["Количество материала"]],
-			Material:          row[headers["Труборез"]],
-			AllowTimeTracking: "Y",
-			TimeEstimate:      timeEstimate,
+		// Формируем заголовок задачи на основе taskType
+		taskTitle := ""
+		switch taskType {
+		case "Лазерные работы":
+			taskTitle = fmt.Sprintf("%s %s",
+				orderNumber,
+				row[headers[taskType]])
+		case "Труборез":
+			taskTitle = fmt.Sprintf("%s %s",
+				orderNumber,
+				row[headers[taskType]])
+		case "Гибочные работы":
+			taskTitle = fmt.Sprintf("Гибка %s %s",
+				orderNumber,
+				row[headers[taskType]])
+		default:
+			taskTitle = fmt.Sprintf("%s задача: %s",
+				taskType, row[headers[taskType]])
 		}
 
+		customFields := CustomTaskFields{
+			OrderNumber:       row[headers["№ заказа"]],
+			Customer:          row[headers["Заказчик"]],
+			Quantity:          row[headers["Количество материала"]],
+			Material:          row[headers[taskType]],
+			AllowTimeTracking: "Y",
+			TimeEstimate:      timeEstimate, // Используем преобразованное значение
+		}
+
+		// Создаём задачу
 		taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
 		if err != nil {
-			log.Printf("Error creating Pipe Cutting Task: %v", err)
+			log.Printf("Error creating %s task: %v\n", taskType, err)
 			continue
 		}
 		taskIDs = append(taskIDs, taskID)
 	}
+
 	return taskIDs, nil
 }
 
