@@ -326,11 +326,10 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 				row[headers["Труборез"]])
 		case "Гибочные работы":
 			// Используем timeToBendWorks для заголовка
-			for laserKey, bendValue := range timeToBendWorks {
-				taskTitle = fmt.Sprintf("Гибка %s %s %s",
+			for laserKey := range timeToBendWorks {
+				taskTitle = fmt.Sprintf("Гибка %s %s",
 					orderNumber,
-					laserKey,
-					bendValue)
+					laserKey)
 			}
 		default:
 			taskTitle = fmt.Sprintf("%s задача: %s",
