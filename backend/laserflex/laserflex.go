@@ -13,12 +13,16 @@ import (
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
+	//order_number={{№ заказа}}&deadline={{Срок сдачи}}
 	log.Println("Connection is starting...")
 
 	// Извлекаем параметры из URL
 	queryParams := r.URL.Query()
 	fileID := queryParams.Get("file_id")
 	smartProcessIDStr := queryParams.Get("smartProcessID")
+	orderNumber := queryParams.Get("order_number")
+	//deadline := queryParams.Get("deadline")
+
 	/*dealID := queryParams.Get("deal_id")
 	assignedByIdStr := queryParams.Get("assigned")
 
@@ -124,17 +128,17 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	var arrayOfTasksIDsPipeCutting []int
 	var arrayOfTasksIDsProducts []int
 	// Обрабатываем задачи и собираем их ID
-	if taskIDs, err := processLaserWorks(fileName, smartProcessID); err == nil {
+	if taskIDs, err := processLaserWorks(orderNumber, fileName, smartProcessID); err == nil {
 		arrayOfTasksIDsLaser = append(arrayOfTasksIDsLaser, taskIDs...)
 		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsLaser ::: %v", arrayOfTasksIDsLaser)
 	}
 
-	if taskIDs, err := processBendWorks(fileName, smartProcessID); err == nil {
+	if taskIDs, err := processBendWorks(orderNumber, fileName, smartProcessID); err == nil {
 		arrayOfTasksIDsBend = append(arrayOfTasksIDsBend, taskIDs...)
 		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsBend ::: %v", arrayOfTasksIDsBend)
 	}
 
-	if taskIDs, err := processPipeCutting(fileName, smartProcessID); err == nil {
+	if taskIDs, err := processPipeCutting(orderNumber, fileName, smartProcessID); err == nil {
 		arrayOfTasksIDsPipeCutting = append(arrayOfTasksIDsPipeCutting, taskIDs...)
 		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsPipeCutting ::: %v", arrayOfTasksIDsPipeCutting)
 	}
@@ -203,22 +207,22 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // processLaserWorks обрабатывает столбец "Лазерные работы"
-func processLaserWorks(fileName string, smartProcessID int) ([]int, error) {
-	return processTaskCustom(fileName, smartProcessID, "Лазерные работы", 1)
+func processLaserWorks(orderNumber string, fileName string, smartProcessID int) ([]int, error) {
+	return processTaskCustom(orderNumber, fileName, smartProcessID, "Лазерные работы", 1)
 }
 
 // processBendWorks обрабатывает столбец "Гибочные работы"
-func processBendWorks(fileName string, smartProcessID int) ([]int, error) {
-	return processTaskCustom(fileName, smartProcessID, "Гибочные работы", 10)
+func processBendWorks(orderNumber string, fileName string, smartProcessID int) ([]int, error) {
+	return processTaskCustom(orderNumber, fileName, smartProcessID, "Гибочные работы", 10)
 }
 
 // processPipeCutting обрабатывает столбец "Труборез"
-func processPipeCutting(fileName string, smartProcessID int) ([]int, error) {
-	return processTaskCustom(fileName, smartProcessID, "Труборез", 11)
+func processPipeCutting(orderNumber string, fileName string, smartProcessID int) ([]int, error) {
+	return processTaskCustom(orderNumber, fileName, smartProcessID, "Труборез", 11)
 }
 
 // processTaskCustom использует AddCustomTaskToParentId для обработки задач
-func processTaskCustom(fileName string, smartProcessID int, taskType string, groupID int) ([]int, error) {
+func processTaskCustom(orderNumber string, fileName string, smartProcessID int, taskType string, groupID int) ([]int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %v", err)
@@ -278,21 +282,19 @@ func processTaskCustom(fileName string, smartProcessID int, taskType string, gro
 		taskTitle := ""
 		switch taskType {
 		case "Лазерные работы":
-			taskTitle = fmt.Sprintf("%s %s %s %s",
-				row[headers["№ заказа"]],
-				row[headers["Заказчик"]],
-				row[headers[taskType]],
-				row[headers["Количество материала"]])
+			taskTitle = fmt.Sprintf("%s %s",
+				orderNumber,
+				row[headers[taskType]])
 		case "Труборез":
 			taskTitle = fmt.Sprintf("%s %s %s %s",
-				row[headers["№ заказа"]],
+				orderNumber,
 				row[headers["Заказчик"]],
 				row[headers[taskType]],
 				row[headers["Количество материала"]])
 		case "Гибочные работы":
 			taskTitle = fmt.Sprintf("Гибка %s %s %s",
 				row[headers[taskType]],
-				row[headers["№ заказа"]],
+				orderNumber,
 				row[headers["Заказчик"]])
 		default:
 			taskTitle = fmt.Sprintf("%s задача: %s",
