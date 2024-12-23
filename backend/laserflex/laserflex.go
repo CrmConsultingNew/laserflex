@@ -164,13 +164,6 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Обновляем смарт-процесс
-		err = pullCustomFieldInSmartProcess(true, 1046, smartProcessID, "ufCrm6_1734478701624", "да", nil)
-		if err != nil {
-			log.Printf("Error updating smart process: %v\n", err)
-			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
-			return
-		}
 	} else {
 		// Если данных нет, создаём задачу без цветов
 		_, err := AddTaskToGroupColor("Задача в ОМТС с материалами из накладной", 149, 12, 1046, smartProcessID, nil)
