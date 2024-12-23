@@ -168,7 +168,6 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 	}
 
 	headers := map[string]int{
-		"№ заказа":             -1,
 		"Заказчик":             -1,
 		"Количество материала": -1,
 		taskType: -1,
@@ -232,14 +231,16 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 		}
 
 		customFields := CustomTaskFields{
-			OrderNumber: row[headers["№ заказа"]],
-			Customer:    row[headers["Заказчик"]],
-			Quantity:    row[headers["Количество материала"]],
-			Material:    row[headers[taskType]],
+			OrderNumber:       row[headers["№ заказа"]],
+			Customer:          row[headers["Заказчик"]],
+			Quantity:          row[headers["Количество материала"]],
+			Material:          row[headers[taskType]],
+			AllowTimeTracking: "Y",
+			TimeEstimate:      row[headers["Время лазерных работ"]],
 		}
 
 		// Создаём задачу
-		taskID, err := AddCustomTaskToParentId(taskTitle, 149, groupID, customFields, smartProcessID)
+		taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
 		if err != nil {
 			log.Printf("Error creating %s task: %v\n", taskType, err)
 			continue
@@ -250,7 +251,7 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 	return taskIDs, nil
 }
 
-func AddCustomTaskToParentId(title string, responsibleID, groupID int, customFields CustomTaskFields, elementID int) (int, error) {
+func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, groupID int, customFields CustomTaskFields, elementID int) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -269,13 +270,15 @@ func AddCustomTaskToParentId(title string, responsibleID, groupID int, customFie
 			"RESPONSIBLE_ID":       responsibleID,
 			"GROUP_ID":             groupID,
 			"UF_CRM_TASK":          []string{smartProcessLink},
-			"UF_AUTO_303168834495": []string{customFields.OrderNumber}, // № заказа
-			"UF_AUTO_876283676967": []string{customFields.Customer},    // Заказчик
-			"UF_AUTO_794809224848": []string{customFields.Manager},     // Менеджер
-			"UF_AUTO_468857876599": []string{customFields.Material},    // Материал
-			"UF_AUTO_497907774817": []string{customFields.Comment},     // Комментарий
-			"UF_AUTO_552243496167": []string{customFields.Quantity},    // Кол-во
-			"DEADLINE":             deadline,                           // DEADLINE: текущая дата + 13 часов
+			"UF_AUTO_303168834495": orderNumber,                     // № заказа
+			"UF_AUTO_876283676967": []string{customFields.Customer}, // Заказчик
+			"UF_AUTO_794809224848": []string{customFields.Manager},  // Менеджер
+			"UF_AUTO_468857876599": []string{customFields.Material}, // Материал
+			"UF_AUTO_497907774817": []string{customFields.Comment},  // Комментарий
+			"UF_AUTO_552243496167": []string{customFields.Quantity}, // Кол-во
+			"DEADLINE":             deadline,                        // DEADLINE: текущая дата + 13 часов
+			"ALLOW_TIME_TRACKING":  []string{customFields.AllowTimeTracking},
+			"TIME_ESTIMATE":        []string{customFields.TimeEstimate},
 		},
 	}
 

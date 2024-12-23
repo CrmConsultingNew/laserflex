@@ -22,6 +22,8 @@ type CustomTaskFields struct {
 	ProductionTask    string `json:"UF_AUTO_433735177517,omitempty"` // Произв. Задача
 	Comment           string `json:"UF_AUTO_497907774817,omitempty"` // Комментарий
 	Coating           string `json:"UF_AUTO_512869473370,omitempty"` // Покрытие
+	AllowTimeTracking string `json:"ALLOW_TIME_TRACKING,omitempty"`
+	TimeEstimate      string `json:"TIME_ESTIMATE,omitempty"` //
 }
 
 // Структура для создания задачи с полями
