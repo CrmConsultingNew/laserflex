@@ -222,7 +222,6 @@ func processPipeCutting(orderNumber string, fileName string, smartProcessID int)
 }
 
 // processTaskCustom использует AddCustomTaskToParentId для обработки задач
-// processTaskCustom использует AddCustomTaskToParentId для обработки задач
 func processTaskCustom(orderNumber string, fileName string, smartProcessID int, taskType string, groupID int) ([]int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
@@ -241,7 +240,11 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 		"№ заказа":             -1,
 		"Заказчик":             -1,
 		"Количество материала": -1,
-		taskType: -1,
+		"Время лазерных работ": -1,
+		"Время гибочных работ": -1,
+		"Труборез":             -1,
+		"Время труборез":       -1,
+		taskType:               -1,
 	}
 
 	// Поиск заголовков
@@ -261,38 +264,6 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 		}
 	}
 
-	// Сбор данных из "Гибочные работы" и "Лазерные работы"
-	timeToBendWorks := make(map[string]string)
-	var bendWorkValues, laserWorkValues []string
-
-	for _, row := range rows[1:] {
-		// Если строка пуста, завершаем обработку
-		isEmptyRow := true
-		for _, cell := range row {
-			if cell != "" {
-				isEmptyRow = false
-				break
-			}
-		}
-		if isEmptyRow {
-			break
-		}
-
-		// Получаем значения из "Гибочные работы" и "Лазерные работы"
-		if headers["Гибочные работы"] < len(row) && row[headers["Гибочные работы"]] != "" {
-			bendWorkValues = append(bendWorkValues, row[headers["Гибочные работы"]])
-		}
-
-		if headers["Лазерные работы"] < len(row) && row[headers["Лазерные работы"]] != "" {
-			laserWorkValues = append(laserWorkValues, row[headers["Лазерные работы"]])
-		}
-	}
-
-	// Сопоставляем значения
-	for i := 0; i < len(bendWorkValues) && i < len(laserWorkValues); i++ {
-		timeToBendWorks[laserWorkValues[i]] = bendWorkValues[i]
-	}
-
 	// Массив для хранения ID созданных задач
 	var taskIDs []int
 
@@ -309,31 +280,34 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 			break
 		}
 
+		// Пропускаем строки без данных
 		if headers[taskType] >= len(row) || row[headers[taskType]] == "" {
 			continue
 		}
 
-		// Формируем заголовок задачи на основе taskType
-		taskTitle := ""
+		var taskTitle string
+		var timeEstimate int
+
 		switch taskType {
 		case "Лазерные работы":
 			taskTitle = fmt.Sprintf("%s %s",
 				orderNumber,
 				row[headers["Лазерные работы"]])
+			timeEstimate = convertToSeconds(row[headers["Время лазерных работ"]])
 		case "Труборез":
 			taskTitle = fmt.Sprintf("%s %s",
 				orderNumber,
 				row[headers["Труборез"]])
+			timeEstimate = convertToSeconds(row[headers["Время труборез"]])
 		case "Гибочные работы":
-			// Используем timeToBendWorks для заголовка
-			for laserKey := range timeToBendWorks {
-				taskTitle = fmt.Sprintf("Гибка %s %s",
-					orderNumber,
-					laserKey)
-			}
+			taskTitle = fmt.Sprintf("Гибка %s %s",
+				orderNumber,
+				row[headers["Лазерные работы"]])
+			timeEstimate = convertToSeconds(row[headers["Время гибочных работ"]])
 		default:
 			taskTitle = fmt.Sprintf("%s задача: %s",
 				taskType, row[headers[taskType]])
+			timeEstimate = 0 // Для других типов время по умолчанию
 		}
 
 		customFields := CustomTaskFields{
@@ -344,7 +318,7 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 		}
 
 		// Создаём задачу
-		taskID, err := AddCustomTaskToParentId(taskTitle, 149, groupID, customFields, smartProcessID)
+		taskID, err := AddCustomTaskToParentId(taskTitle, 149, groupID, customFields, smartProcessID, timeEstimate)
 		if err != nil {
 			log.Printf("Error creating %s task: %v\n", taskType, err)
 			continue
@@ -353,6 +327,15 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 	}
 
 	return taskIDs, nil
+}
+
+func convertToSeconds(cellValue string) int {
+	// Преобразование времени в минуты в секунды
+	value, err := strconv.Atoi(cellValue)
+	if err != nil {
+		return 0
+	}
+	return value * 60
 }
 
 func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
