@@ -35,10 +35,12 @@ func checkCoatingColumn(fileName string) bool {
 	}
 
 	// Проверяем наличие заполненных ячеек
-	for _, row := range rows[1:] {
+	for rowIndex, row := range rows[1:] {
 		if len(row) > coatingColumnIndex && strings.TrimSpace(row[coatingColumnIndex]) != "" {
+			log.Printf("Found value in 'Нанесение покрытий' at row %d: %s", rowIndex+2, row[coatingColumnIndex])
 			return true
 		}
 	}
+	log.Println("No filled cells found in column 'Нанесение покрытий'")
 	return false
 }

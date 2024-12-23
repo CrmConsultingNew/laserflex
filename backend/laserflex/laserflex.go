@@ -128,23 +128,21 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Лазерные работы ID
-	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471089453", "да", arrayOfTasksIDsLaser)
+	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734471089453", arrayOfTasksIDsLaser)
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
 		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
 		return
 	}
 
-	// Гибочные работы ID
-	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsBend) // Используем правильную переменную!
+	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1733265874338", arrayOfTasksIDsBend)
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
 		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
 		return
 	}
 
-	// Труборез ID
-	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsPipeCutting) // Используем правильную переменную!
+	err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734471206084", arrayOfTasksIDsPipeCutting)
 	if err != nil {
 		log.Printf("Error updating smart process: %v\n", err)
 		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
@@ -165,7 +163,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Обновляем смарт-процесс
-		err = pullCustomFieldInSmartProcess(true, 1046, smartProcessID, "ufCrm6_1734478701624", "да", nil)
+		err = pullCustomFieldInSmartProcess(1046, smartProcessID, "ufCrm6_1734478701624", nil)
 		if err != nil {
 			log.Printf("Error updating smart process: %v\n", err)
 			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
@@ -214,10 +212,11 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 	}
 
 	headers := map[string]int{
+		"Лазерные работы":      -1, // Для Гибочных работ
+		"Гибочные работы":      -1,
 		"Заказчик":             -1,
 		"Количество материала": -1,
-		taskType:               -1,
-		"Время лазерных работ": -1, // Добавляем столбец для времени
+		taskType: -1,
 	}
 
 	// Поиск заголовков
@@ -232,7 +231,7 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 
 	// Проверяем наличие всех необходимых заголовков
 	for header, index := range headers {
-		if index == -1 {
+		if index == -1 && header != "Лазерные работы" {
 			return nil, fmt.Errorf("missing required header: %s", header)
 		}
 	}
@@ -257,50 +256,63 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 			continue
 		}
 
-		// Преобразуем время из строки в int
-		timeEstimateStr := row[headers["Время лазерных работ"]]
-		timeEstimate, err := strconv.Atoi(timeEstimateStr)
-		if err != nil {
-			log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
-			continue
-		}
+		// Для типа задач "Гибочные работы"
+		if taskType == "Гибочные работы" {
+			// Получаем значения "Лазерные работы" и "Гибочные работы"
+			var laserWorksCellValue string
+			if headers["Лазерные работы"] != -1 && len(row) > headers["Лазерные работы"] {
+				laserWorksCellValue = row[headers["Лазерные работы"]]
+			}
 
-		// Формируем заголовок задачи на основе taskType
-		taskTitle := ""
-		switch taskType {
-		case "Лазерные работы":
-			taskTitle = fmt.Sprintf("%s %s",
-				orderNumber,
-				row[headers[taskType]])
-		case "Труборез":
-			taskTitle = fmt.Sprintf("%s %s",
-				orderNumber,
-				row[headers[taskType]])
-		case "Гибочные работы":
-			taskTitle = fmt.Sprintf("Гибка %s %s",
-				orderNumber,
-				row[headers[taskType]])
-		default:
-			taskTitle = fmt.Sprintf("%s задача: %s",
-				taskType, row[headers[taskType]])
-		}
+			timeEstimateStr := row[headers["Гибочные работы"]]
+			timeEstimate, err := strconv.Atoi(timeEstimateStr)
+			if err != nil {
+				log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
+				continue
+			}
 
-		customFields := CustomTaskFields{
-			OrderNumber:       row[headers["№ заказа"]],
-			Customer:          row[headers["Заказчик"]],
-			Quantity:          row[headers["Количество материала"]],
-			Material:          row[headers[taskType]],
-			AllowTimeTracking: "Y",
-			TimeEstimate:      timeEstimate, // Используем преобразованное значение
-		}
+			taskTitle := fmt.Sprintf("Гибка %s %s", orderNumber, laserWorksCellValue)
 
-		// Создаём задачу
-		taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
-		if err != nil {
-			log.Printf("Error creating %s task: %v\n", taskType, err)
-			continue
+			customFields := CustomTaskFields{
+				OrderNumber:       row[headers["Заказчик"]],
+				Customer:          row[headers["Количество материала"]],
+				Material:          laserWorksCellValue,
+				AllowTimeTracking: "Y",
+				TimeEstimate:      timeEstimate,
+			}
+
+			taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
+			if err != nil {
+				log.Printf("Error creating %s task: %v\n", taskType, err)
+				continue
+			}
+			taskIDs = append(taskIDs, taskID)
+		} else {
+			// Стандартная обработка для других типов задач
+			timeEstimateStr := row[headers["Время лазерных работ"]]
+			timeEstimate, err := strconv.Atoi(timeEstimateStr)
+			if err != nil {
+				log.Printf("Error converting time estimate '%s' to int: %v", timeEstimateStr, err)
+				continue
+			}
+
+			taskTitle := fmt.Sprintf("%s %s", orderNumber, row[headers[taskType]])
+
+			customFields := CustomTaskFields{
+				OrderNumber:       row[headers["Заказчик"]],
+				Customer:          row[headers["Количество материала"]],
+				Material:          row[headers[taskType]],
+				AllowTimeTracking: "Y",
+				TimeEstimate:      timeEstimate,
+			}
+
+			taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, 149, groupID, customFields, smartProcessID)
+			if err != nil {
+				log.Printf("Error creating %s task: %v\n", taskType, err)
+				continue
+			}
+			taskIDs = append(taskIDs, taskID)
 		}
-		taskIDs = append(taskIDs, taskID)
 	}
 
 	return taskIDs, nil
@@ -380,7 +392,7 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 	return taskID, nil
 }
 
-func pullCustomFieldInSmartProcess(checkCoating bool, entityTypeId, smartProcessID int, fieldName, fieldValue string, tasksIDs []int) error {
+func pullCustomFieldInSmartProcess(entityTypeId, smartProcessID int, fieldName string, tasksIDs []int) error {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "crm.item.update"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -396,26 +408,15 @@ func pullCustomFieldInSmartProcess(checkCoating bool, entityTypeId, smartProcess
 		stringTasksIDs[i] = strconv.Itoa(id)
 	}
 
-	if checkCoating == true {
-
-	}
 	// Обновляем значение полей в запросе
 	requestBody := map[string]interface{}{
 		"entityTypeId": entityTypeId,
 		"id":           smartProcessID,
 		"fields": map[string]interface{}{
-			fieldName: stringTasksIDs, // Используем динамическое имя поля
+			fieldName: stringTasksIDs,
 		},
 	}
-	if checkCoating == true {
-		requestBody = map[string]interface{}{
-			"entityTypeId": entityTypeId,
-			"id":           smartProcessID,
-			"fields": map[string]interface{}{
-				"ufCrm6_1733264270": "да", // Используем динамическое имя поля
-			},
-		}
-	}
+
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return fmt.Errorf("error marshalling request body: %v", err)
