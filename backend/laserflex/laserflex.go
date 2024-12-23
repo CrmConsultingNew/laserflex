@@ -235,7 +235,7 @@ func processBendWorks(orderNumber string, fileName string, smartProcessID int) (
 
 		materialValue := ""
 		if headers["Количество материала"] < len(row) {
-			materialValue = row[headers["Количество материала"]]
+			materialValue = row[headers["Лазерные работы"]]
 		}
 
 		timeEstimateStr := row[headers["Гибочные работы"]]
