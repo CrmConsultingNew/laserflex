@@ -13,18 +13,23 @@ import (
 )
 
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
+	//order_number={{№ заказа}}&deadline={{Срок сдачи}}
 	log.Println("Connection is starting...")
 
+	// Извлекаем параметры из URL
 	queryParams := r.URL.Query()
 	fileID := queryParams.Get("file_id")
 	smartProcessIDStr := queryParams.Get("smartProcessID")
 	orderNumber := queryParams.Get("order_number")
+
+	// 1
 
 	if fileID == "" {
 		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
 		return
 	}
 
+	// Конвертация smartProcessID в int
 	smartProcessID, err := strconv.Atoi(smartProcessIDStr)
 	if err != nil {
 		log.Printf("Error converting smartProcessID to int: %v\n", err)
@@ -32,6 +37,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Получаем данные о файле
 	fileDetails, err := GetFileDetails(fileID)
 	if err != nil {
 		log.Printf("Error getting file details: %v\n", err)
@@ -39,6 +45,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Скачиваем файл
 	fileName := fmt.Sprintf("file_downloaded_xls%d.xlsx", downloadCounter)
 	err = downloadFile(fileDetails.DownloadURL, downloadCounter)
 	if err != nil {
@@ -47,66 +54,83 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 2
+
 	var arrayOfTasksIDsLaser []int
 	var arrayOfTasksIDsBend []int
 	var arrayOfTasksIDsPipeCutting []int
-
+	var arrayOfTasksIDsProducts []int
+	// Обрабатываем задачи и собираем их ID
 	if taskIDs, err := processLaserWorks(orderNumber, fileName, smartProcessID); err == nil {
 		arrayOfTasksIDsLaser = append(arrayOfTasksIDsLaser, taskIDs...)
-		log.Printf("Laser Tasks IDs: %v", arrayOfTasksIDsLaser)
+		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsLaser ::: %v", arrayOfTasksIDsLaser)
 	}
 
 	if taskIDs, err := processBendWorks(orderNumber, fileName, smartProcessID); err == nil {
 		arrayOfTasksIDsBend = append(arrayOfTasksIDsBend, taskIDs...)
-		log.Printf("Bend Tasks IDs: %v", arrayOfTasksIDsBend)
+		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsBend ::: %v", arrayOfTasksIDsBend)
 	}
 
 	if taskIDs, err := processPipeCutting(orderNumber, fileName, smartProcessID); err == nil {
 		arrayOfTasksIDsPipeCutting = append(arrayOfTasksIDsPipeCutting, taskIDs...)
-		log.Printf("Pipe Cutting Tasks IDs: %v", arrayOfTasksIDsPipeCutting)
+		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsPipeCutting ::: %v", arrayOfTasksIDsPipeCutting)
 	}
 
+	if taskIDs, err := processProducts(fileName, smartProcessID, 149); err == nil {
+		arrayOfTasksIDsProducts = append(arrayOfTasksIDsProducts, taskIDs)
+		log.Printf("ATTENT:!!!!!: arrayOfTasksIDsProducts ::: %v", arrayOfTasksIDsProducts)
+	}
+
+	// Лазерные работы ID
 	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471089453", "да", arrayOfTasksIDsLaser)
 	if err != nil {
-		log.Printf("Error updating Laser Tasks in smart process: %v\n", err)
-		http.Error(w, "Failed to update Laser Tasks in smart process", http.StatusInternalServerError)
+		log.Printf("Error updating smart process: %v\n", err)
+		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
 		return
 	}
 
-	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsBend)
+	// Гибочные работы ID
+	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsBend) // Используем правильную переменную!
 	if err != nil {
-		log.Printf("Error updating Bend Tasks in smart process: %v\n", err)
-		http.Error(w, "Failed to update Bend Tasks in smart process", http.StatusInternalServerError)
+		log.Printf("Error updating smart process: %v\n", err)
+		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
 		return
 	}
 
-	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsPipeCutting)
+	// Труборез ID
+	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsPipeCutting) // Используем правильную переменную!
 	if err != nil {
-		log.Printf("Error updating Pipe Cutting Tasks in smart process: %v\n", err)
-		http.Error(w, "Failed to update Pipe Cutting Tasks in smart process", http.StatusInternalServerError)
+		log.Printf("Error updating smart process: %v\n", err)
+		http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
 		return
 	}
 
+	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
+
+	// Проверяем наличие данных в столбце "Нанесение покрытий"
 	if checkCoatingColumn(fileName) {
+		// Если есть данные, получаем цвета из "Цвет/цинк"
 		colors := parseSheetForColorColumn(fileName)
 		_, err := AddTaskToGroupColor("Проверить наличие ЛКП на складе в ОМТС", 149, 12, 1046, smartProcessID, colors)
 		if err != nil {
-			log.Printf("Error creating coating task: %v\n", err)
-			http.Error(w, "Failed to create coating task", http.StatusInternalServerError)
+			log.Printf("Error creating task with colors: %v", err)
+			http.Error(w, "Failed to create task with colors", http.StatusInternalServerError)
 			return
 		}
 
+		// Обновляем смарт-процесс
 		err = pullCustomFieldInSmartProcess(true, 1046, smartProcessID, "ufCrm6_1734478701624", "да", nil)
 		if err != nil {
-			log.Printf("Error updating smart process for coating: %v\n", err)
-			http.Error(w, "Failed to update smart process for coating", http.StatusInternalServerError)
+			log.Printf("Error updating smart process: %v\n", err)
+			http.Error(w, "Failed to update smart process", http.StatusInternalServerError)
 			return
 		}
 	} else {
+		// Если данных нет, создаём задачу без цветов
 		_, err := AddTaskToGroupColor("Задача в ОМТС с материалами из накладной", 149, 12, 1046, smartProcessID, nil)
 		if err != nil {
-			log.Printf("Error creating general OMTS task: %v\n", err)
-			http.Error(w, "Failed to create general OMTS task", http.StatusInternalServerError)
+			log.Printf("Error creating task without colors: %v", err)
+			http.Error(w, "Failed to create task without colors", http.StatusInternalServerError)
 			return
 		}
 	}
