@@ -60,7 +60,7 @@ func AddTaskToGroupColor(orderNumber string, title string, responsibleID, groupI
 	}
 
 	// Логирование для отладки
-	log.Printf("Raw Response: %s\n", string(responseData))
+	log.Printf("Raw Response_group_color: %s\n", string(responseData))
 
 	// Измененная структура ответа
 	var response struct {
@@ -144,7 +144,7 @@ func AddTaskToGroup(title string, responsibleID, groupID, processTypeID, element
 	}
 
 	// Логирование для отладки
-	log.Printf("Raw Response: %s\n", string(responseData))
+	log.Printf("Raw Response_task_to_group: %s\n", string(responseData))
 
 	// Измененная структура ответа
 	var response struct {

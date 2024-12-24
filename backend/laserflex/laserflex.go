@@ -391,7 +391,7 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 		return 0, fmt.Errorf("error reading response body: %v", err)
 	}
 
-	log.Printf("Response from Bitrix24: %s\n", string(responseData))
+	log.Printf("Response from Bitrix24_custom_task : %s\n", string(responseData))
 
 	// Разбираем ответ
 	var response TaskResponse
