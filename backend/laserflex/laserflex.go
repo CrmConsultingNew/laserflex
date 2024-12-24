@@ -353,15 +353,15 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 			"RESPONSIBLE_ID":       responsibleID,
 			"GROUP_ID":             groupID,
 			"UF_CRM_TASK":          []string{smartProcessLink},
-			"UF_AUTO_303168834495": []string{orderNumber},           // № заказа
-			"UF_AUTO_876283676967": []string{customFields.Customer}, // Заказчик
-			"UF_AUTO_794809224848": []string{customFields.Manager},  // Менеджер
-			"UF_AUTO_468857876599": []string{customFields.Material}, // Материал
-			"UF_AUTO_497907774817": []string{customFields.Comment},  // Комментарий
-			"UF_AUTO_552243496167": []string{customFields.Quantity}, // Кол-во
-			"DEADLINE":             deadlineWithTime,                // DEADLINE: дата с добавленными 16 часами
-			"ALLOW_TIME_TRACKING":  "Y",                             // Обязательно строка "Y"
-			"TIME_ESTIMATE":        customFields.TimeEstimate * 60,  // Передаем как число
+			"UF_AUTO_303168834495": []string{orderNumber},
+			"UF_AUTO_876283676967": []string{customFields.Customer},
+			"UF_AUTO_794809224848": []string{customFields.Manager},
+			"UF_AUTO_468857876599": []string{customFields.Material},
+			"UF_AUTO_497907774817": []string{customFields.Comment},
+			"UF_AUTO_552243496167": []string{customFields.Quantity},
+			"DEADLINE":             deadlineWithTime,
+			"ALLOW_TIME_TRACKING":  "Y",
+			"TIME_ESTIMATE":        customFields.TimeEstimate * 60,
 		},
 	}
 
@@ -391,17 +391,23 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID, gr
 		return 0, fmt.Errorf("error reading response body: %v", err)
 	}
 
-	log.Printf("Response from Bitrix24_custom_task : %s\n", string(responseData))
+	log.Printf("Response from Bitrix24: %s\n", string(responseData))
 
 	// Разбираем ответ
-	var response TaskResponse
+	var response struct {
+		Result struct {
+			Task struct {
+				ID string `json:"id"`
+			} `json:"task"`
+		} `json:"result"`
+	}
 	if err := json.Unmarshal(responseData, &response); err != nil {
 		return 0, fmt.Errorf("error unmarshalling response: %v", err)
 	}
 
-	// Обрабатываем ID задачи
-	var taskID int
-	if err := json.Unmarshal(response.Result.Task.ID, &taskID); err != nil {
+	// Преобразуем строковый ID в число
+	taskID, err := strconv.Atoi(response.Result.Task.ID)
+	if err != nil {
 		return 0, fmt.Errorf("error parsing task id: %v", err)
 	}
 
