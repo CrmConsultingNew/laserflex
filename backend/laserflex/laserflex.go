@@ -104,6 +104,13 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if len(arrayOfTasksIDsProducts) > 0 {
+		err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734478701624", "да", arrayOfTasksIDsProducts)
+		if err != nil {
+			log.Printf("Error updating smart process for Products tasks: %v\n", err)
+		}
+	}
+
 	// Проверяем наличие данных в столбце "Нанесение покрытий"
 	if CheckCoatingColumn(fileName) {
 		// Если есть данные, получаем цвета из "Цвет/цинк"
