@@ -78,25 +78,31 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		arrayOfTasksIDsProducts = append(arrayOfTasksIDsProducts, taskIDs)
 	}
 
-	// Лазерные работы ID
-	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471089453", "да", arrayOfTasksIDsLaser)
-	if err != nil {
-		log.Printf("Error updating smart process: %v\n", err)
+	log.Printf("Laser task IDs: %v", arrayOfTasksIDsLaser)
+	log.Printf("Bend task IDs: %v", arrayOfTasksIDsBend)
+	log.Printf("Pipe Cutting task IDs: %v", arrayOfTasksIDsPipeCutting)
+	log.Printf("Products task IDs: %v", arrayOfTasksIDsProducts)
+
+	if len(arrayOfTasksIDsLaser) > 0 {
+		err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471089453", "да", arrayOfTasksIDsLaser)
+		if err != nil {
+			log.Printf("Error updating smart process for Laser tasks: %v\n", err)
+		}
 	}
 
-	// Гибочные работы ID
-	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsBend) // Используем правильную переменную!
-	if err != nil {
-		log.Printf("Error updating smart process: %v\n", err)
+	if len(arrayOfTasksIDsBend) > 0 {
+		err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1733265874338", "да", arrayOfTasksIDsBend)
+		if err != nil {
+			log.Printf("Error updating smart process for Bend tasks: %v\n", err)
+		}
 	}
 
-	// Труборез ID
-	err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsPipeCutting) // Используем правильную переменную!
-	if err != nil {
-		log.Printf("Error updating smart process: %v\n", err)
+	if len(arrayOfTasksIDsPipeCutting) > 0 {
+		err = pullCustomFieldInSmartProcess(false, 1046, smartProcessID, "ufCrm6_1734471206084", "да", arrayOfTasksIDsPipeCutting)
+		if err != nil {
+			log.Printf("Error updating smart process for Pipe Cutting tasks: %v\n", err)
+		}
 	}
-
-	// Проверяем наличие заполненных ячеек в столбце "Нанесение покрытий"
 
 	// Проверяем наличие данных в столбце "Нанесение покрытий"
 	if CheckCoatingColumn(fileName) {
