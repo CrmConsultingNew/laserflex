@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func AddTaskToGroupColor(orderNumber string, title string, responsibleID, groupID, processTypeID, elementID int, colors []string) (int, error) {
+func AddTaskToGroupColor(orderNumber string, client string, title string, responsibleID, groupID, processTypeID, elementID int, colors []string) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -33,7 +33,8 @@ func AddTaskToGroupColor(orderNumber string, title string, responsibleID, groupI
 			"UF_CRM_TASK":          []string{smartProcessLink},
 			"DEADLINE":             deadline, // DEADLINE: текущая дата + 13 часов,
 			"UF_AUTO_512869473370": colors,
-			"UF_AUTO_303168834495": orderNumber,
+			"UF_AUTO_303168834495": []string{orderNumber},
+			"UF_AUTO_876283676967": []string{client},
 		},
 	}
 
