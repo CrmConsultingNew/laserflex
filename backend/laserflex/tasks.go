@@ -118,8 +118,8 @@ func AddTaskToGroup(orderNumber, client, title string, responsibleID, groupID, p
 			"GROUP_ID":             groupID,
 			"UF_CRM_TASK":          []string{smartProcessLink},
 			"DEADLINE":             deadline, // DEADLINE: текущая дата + 13 часов
-			"UF_AUTO_303168834495": orderNumber,
-			"UF_AUTO_876283676967": client,
+			"UF_AUTO_303168834495": []string{orderNumber},
+			"UF_AUTO_876283676967": []string{client},
 		},
 	}
 
