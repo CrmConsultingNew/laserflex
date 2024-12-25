@@ -156,11 +156,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	//TODO сделать Ответственного из глобальной константы
 	// Проверяем наличие данных в столбце "Нанесение покрытий"
 	if CheckCoatingColumn(fileName) {
 		// Если есть данные, получаем цвета из "Цвет/цинк"
 		colors := ParseSheetForColorColumn(fileName)
-		_, err := AddTaskToGroupColor(orderNumber, client, "Проверить наличие ЛКП на складе в ОМТС", engineerId, 12, 1046, smartProcessID, colors)
+		_, err := AddTaskToGroupColor(orderNumber, client, "Проверить наличие ЛКП на складе в ОМТС", 57, 12, 1046, smartProcessID, colors)
 		if err != nil {
 			log.Printf("Error creating task with colors: %v", err)
 			http.Error(w, "Failed to create task with colors", http.StatusInternalServerError)
@@ -169,7 +170,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		// Если данных нет, создаём задачу без цветов
-		_, err := AddTaskToGroupColor(orderNumber, client, "Задача в ОМТС с материалами из накладной", engineerId, 12, 1046, smartProcessID, nil)
+		_, err := AddTaskToGroupColor(orderNumber, client, "Задача в ОМТС с материалами из накладной", 57, 12, 1046, smartProcessID, nil)
 		if err != nil {
 			log.Printf("Error creating task without colors: %v", err)
 			http.Error(w, "Failed to create task without colors", http.StatusInternalServerError)
