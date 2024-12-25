@@ -20,7 +20,7 @@ import (
 
 func Router() {
 
-	http.HandleFunc("/laser_checklist", laserflex.HandlerProcessProducts)
+	//http.HandleFunc("/laser_checklist", laserflex.HandlerProcessProducts)
 
 	http.HandleFunc("/laser_auth", authorize_backup.AuthorizeEndpoint)
 
