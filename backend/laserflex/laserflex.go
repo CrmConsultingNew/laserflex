@@ -12,6 +12,41 @@ import (
 	"time"
 )
 
+func GetClientFromExcel(fileName, columnName string) (string, error) {
+	f, err := excelize.OpenFile(fileName)
+	if err != nil {
+		return "", fmt.Errorf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	rows, err := f.GetRows("Реестр")
+	if err != nil {
+		return "", fmt.Errorf("error reading rows: %v", err)
+	}
+
+	// Находим индекс столбца
+	var columnIndex int = -1
+	for i, cell := range rows[0] {
+		if cell == columnName {
+			columnIndex = i
+			break
+		}
+	}
+
+	if columnIndex == -1 {
+		return "", fmt.Errorf("column '%s' not found", columnName)
+	}
+
+	// Получаем первое значение из столбца
+	for _, row := range rows[1:] {
+		if len(row) > columnIndex && row[columnIndex] != "" {
+			return row[columnIndex], nil
+		}
+	}
+
+	return "", fmt.Errorf("no data found in column '%s'", columnName)
+}
+
 func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	//order_number={{№ заказа}}&deadline={{Срок сдачи}}
 	log.Println("Connection is starting...")
@@ -75,7 +110,16 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		arrayOfTasksIDsPipeCutting = append(arrayOfTasksIDsPipeCutting, taskIDs...)
 	}
 
-	if taskIDs, err := processProducts(orderNumber, ClientCell, fileName, smartProcessID, engineerId); err == nil {
+	// Получаем заказчика из файла
+	client, err := GetClientFromExcel(fileName, "Заказчик")
+	if err != nil {
+		log.Printf("Error getting client from Excel: %v\n", err)
+		http.Error(w, "Failed to get client from Excel", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("!!!!!!!!!!!!!!!Client from Excel: %v\n Order number: %v\n", client, orderNumber)
+	if taskIDs, err := processProducts(orderNumber, client, fileName, smartProcessID, engineerId); err == nil {
 		arrayOfTasksIDsProducts = append(arrayOfTasksIDsProducts, taskIDs)
 	}
 
@@ -493,6 +537,104 @@ func pullCustomFieldInSmartProcess(checkCoating bool, entityTypeId, smartProcess
 
 	log.Printf("Smart process updated successfully for ID: %d with tasks: %v", smartProcessID, tasksIDs)
 	return nil
+}
+
+var ClientCell string
+
+// processProducts обрабатывает столбцы "Производство" и "Нанесение покрытий"
+func processProducts(orderNumber, client, fileName string, smartProcessID, engineerID int) (int, error) {
+	f, err := excelize.OpenFile(fileName)
+	if err != nil {
+		return 0, fmt.Errorf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	rows, err := f.GetRows("Реестр")
+	if err != nil {
+		return 0, fmt.Errorf("error reading rows: %v", err)
+	}
+
+	// Определяем индексы заголовков
+	headers := map[string]int{
+		"Производство":         -1,
+		"Нанесение покрытий":   -1,
+		"№ заказа":             -1,
+		"Заказчик":             -1,
+		"Менеджер":             -1,
+		"Комментарий":          -1,
+		"Количество материала": -1,
+	}
+
+	// Поиск заголовков
+	for i, cell := range rows[0] {
+		for header := range headers {
+			if cell == header {
+				headers[header] = i
+				break
+			}
+		}
+	}
+
+	// Проверяем наличие всех необходимых заголовков
+	for header, index := range headers {
+		if index == -1 {
+			return 0, fmt.Errorf("missing required header: %s", header)
+		}
+	}
+
+	// ID основной задачи "Производство"
+	taskID, err := AddTaskToGroup(orderNumber, client, "Производство", engineerID, 2, 1046, smartProcessID)
+	if err != nil {
+		return 0, fmt.Errorf("error creating main production task: %v", err)
+	}
+
+	// Используем map для проверки уникальности
+	uniqueChecklistItems := make(map[string]struct{})
+
+	// Обработка строк и добавление чек-листов
+	for _, row := range rows[1:] {
+		// Проверяем пустоту строки
+		isEmptyRow := true
+		for _, cell := range row {
+			if cell != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow {
+			break
+		}
+
+		// Получаем значения ячеек
+		productionCell := row[headers["Производство"]]
+		coatingCell := row[headers["Нанесение покрытий"]]
+
+		ClientCell = row[headers["Заказчик"]] //todo GLOBAL
+
+		// Проверяем и добавляем элементы из "Производство"
+		if productionCell != "" {
+			if _, exists := uniqueChecklistItems[productionCell]; !exists {
+				uniqueChecklistItems[productionCell] = struct{}{}
+				_, err := AddCheckListToTheTask(taskID, productionCell)
+				if err != nil {
+					log.Printf("Error adding checklist item from 'Производство': %v\n", err)
+				}
+			}
+		}
+
+		// Проверяем и добавляем элементы из "Нанесение покрытий"
+		if coatingCell != "" {
+			if _, exists := uniqueChecklistItems[coatingCell]; !exists {
+				uniqueChecklistItems[coatingCell] = struct{}{}
+				_, err := AddCheckListToTheTask(taskID, coatingCell)
+				if err != nil {
+					log.Printf("Error adding checklist item from 'Нанесение покрытий': %v\n", err)
+				}
+			}
+		}
+	}
+
+	return taskID, nil
 }
 
 // 1
