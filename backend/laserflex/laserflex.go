@@ -61,6 +61,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	var arrayOfTasksIDsBend []int
 	var arrayOfTasksIDsPipeCutting []int
 	var arrayOfTasksIDsProducts []int
+
 	// Обрабатываем задачи и собираем их ID
 	if taskIDs, err := processLaserWorks(orderNumber, fileName, smartProcessID, deadline); err == nil {
 		arrayOfTasksIDsLaser = append(arrayOfTasksIDsLaser, taskIDs...)
@@ -74,7 +75,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 		arrayOfTasksIDsPipeCutting = append(arrayOfTasksIDsPipeCutting, taskIDs...)
 	}
 
-	if taskIDs, err := processProducts(fileName, smartProcessID, engineerId); err == nil {
+	if taskIDs, err := processProducts(orderNumber, ClientCell, fileName, smartProcessID, engineerId); err == nil {
 		arrayOfTasksIDsProducts = append(arrayOfTasksIDsProducts, taskIDs)
 	}
 

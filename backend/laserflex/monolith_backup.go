@@ -15,16 +15,18 @@ import (
 	"strings"
 )
 
-func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
+/*func HandlerProcessProducts(w http.ResponseWriter, r *http.Request) {
 	products, err := processProducts("file.xlsx", 688, 149)
 	if err != nil {
 		log.Printf("Error processing products: %v\n", err)
 	}
 	fmt.Fprintf(w, "Products processed successfully: %v", products)
-}
+}*/
+
+var ClientCell string
 
 // processProducts обрабатывает столбцы "Производство" и "Нанесение покрытий"
-func processProducts(fileName string, smartProcessID, engineerID int) (int, error) {
+func processProducts(orderNumber, client, fileName string, smartProcessID, engineerID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
@@ -65,7 +67,7 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 	}
 
 	// ID основной задачи "Производство"
-	taskID, err := AddTaskToGroup("Производство", engineerID, 2, 1046, smartProcessID)
+	taskID, err := AddTaskToGroup(orderNumber, client, "Производство", engineerID, 2, 1046, smartProcessID)
 	if err != nil {
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
@@ -90,6 +92,8 @@ func processProducts(fileName string, smartProcessID, engineerID int) (int, erro
 		// Получаем значения ячеек
 		productionCell := row[headers["Производство"]]
 		coatingCell := row[headers["Нанесение покрытий"]]
+
+		ClientCell = row[headers["Заказчик"]] //todo GLOBAL
 
 		// Проверяем и добавляем элементы из "Производство"
 		if productionCell != "" {
@@ -225,7 +229,7 @@ func AddProductsRowToDeal(dealID string, productIDs []int, quantities []float64,
 }
 
 // processTask универсальная функция для обработки задач
-func processTask(fileName string, smartProcessID, engineerID int, taskType string, groupID int) (int, error) {
+func processTask(orderNumber, client, fileName string, smartProcessID, engineerID int, taskType string, groupID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
@@ -287,7 +291,7 @@ func processTask(fileName string, smartProcessID, engineerID int, taskType strin
 
 		// Создаём задачу, если ещё не создана
 		if taskID == 0 {
-			taskID, err = AddTaskToGroup(taskType, 149, groupID, 1046, smartProcessID)
+			taskID, err = AddTaskToGroup(orderNumber, client, taskType, 149, groupID, 1046, smartProcessID)
 			if err != nil {
 				return 0, fmt.Errorf("error creating %s task: %v", taskType, err)
 			}
@@ -960,7 +964,7 @@ func AddProductsWithImage(product Product, sectionID string) (int, error) {
 	return response.Result, nil
 }
 
-func processLaser(fileName string, smartProcessID, engineerID int) (int, error) {
+func processLaser(orderNumber, client, fileName string, smartProcessID, engineerID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
@@ -1001,7 +1005,7 @@ func processLaser(fileName string, smartProcessID, engineerID int) (int, error) 
 	}
 
 	// ID основной задачи "Производство"
-	taskID, err := AddTaskToGroup("Производство", engineerID, 2, 1046, smartProcessID)
+	taskID, err := AddTaskToGroup(orderNumber, client, "Производство", engineerID, 2, 1046, smartProcessID)
 	if err != nil {
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
@@ -1053,13 +1057,13 @@ func processLaser(fileName string, smartProcessID, engineerID int) (int, error) 
 	return taskID, nil
 }
 
-func HandlerAddCustomTaskToParentId(w http.ResponseWriter, r *http.Request) {
+/*func HandlerAddCustomTaskToParentId(w http.ResponseWriter, r *http.Request) {
 	products, err := processProducts("file.xlsx", 688, 149)
 	if err != nil {
 		log.Printf("Error processing products: %v\n", err)
 	}
 	fmt.Fprintf(w, "Products processed successfully: %v", products)
-}
+}*/
 
 func ConductDocumentId(documentID int) error {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
