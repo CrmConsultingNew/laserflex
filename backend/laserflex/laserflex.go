@@ -586,9 +586,9 @@ func processProducts(assignedId int, orderNumber, client, fileName string, smart
 			return 0, fmt.Errorf("missing required header: %s", header)
 		}
 	}
-
+	titleTask := fmt.Sprintf("%s %s", orderNumber, client)
 	// ID основной задачи "Производство"
-	taskID, err := AddTaskToGroup(assignedId, orderNumber, client, "Производство", engineerID, 2, 1046, smartProcessID)
+	taskID, err := AddTaskToGroup(assignedId, orderNumber, client, titleTask, engineerID, 2, 1046, smartProcessID)
 	if err != nil {
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}
