@@ -59,9 +59,9 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	engineerStr := queryParams.Get("engineer_id")
 	engineerId, _ := strconv.Atoi(engineerStr)
 	deadline := queryParams.Get("deadline")
-	assignedId := queryParams.Get("assigned")
+	assignedIdStr := queryParams.Get("assigned")
+	assignedId, _ := strconv.Atoi(assignedIdStr)
 
-	log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Assigned: %v", assignedId)
 	// 1
 	if fileID == "" {
 		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
@@ -186,12 +186,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // processLaserWorks обрабатывает столбец "Лазерные работы"
-func processLaserWorks(assignedId string, orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
+func processLaserWorks(assignedId int, orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
 	return processTaskCustom(assignedId, orderNumber, fileName, smartProcessID, "Лазерные работы", 1, deadline, engineerId)
 }
 
 // processBendWorks обрабатывает столбец "Гибочные работы"
-func processBendWorks(assignedId string, orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
+func processBendWorks(assignedId int, orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %v", err)
@@ -285,12 +285,12 @@ func processBendWorks(assignedId string, orderNumber string, fileName string, sm
 }
 
 // processPipeCutting обрабатывает столбец "Труборез"
-func processPipeCutting(assignedId string, orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
+func processPipeCutting(assignedId int, orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
 	return processTaskCustom(assignedId, orderNumber, fileName, smartProcessID, "Труборез", 11, deadline, engineerId)
 }
 
 // processTaskCustom использует AddCustomTaskToParentId для обработки задач
-func processTaskCustom(assignedId string, orderNumber string, fileName string, smartProcessID int, taskType string, groupID int, deadline string, engineerId int) ([]int, error) {
+func processTaskCustom(assignedId int, orderNumber string, fileName string, smartProcessID int, taskType string, groupID int, deadline string, engineerId int) ([]int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %v", err)
@@ -547,7 +547,7 @@ func pullCustomFieldInSmartProcess(checkCoating bool, entityTypeId, smartProcess
 var ClientCell string
 
 // processProducts обрабатывает столбцы "Производство" и "Нанесение покрытий"
-func processProducts(assignedId string, orderNumber, client, fileName string, smartProcessID, engineerID int) (int, error) {
+func processProducts(assignedId int, orderNumber, client, fileName string, smartProcessID, engineerID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
