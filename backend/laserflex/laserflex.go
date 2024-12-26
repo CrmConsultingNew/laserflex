@@ -61,6 +61,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	deadline := queryParams.Get("deadline")
 	assignedId := queryParams.Get("assigned")
 
+	log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Assigned: %v", assignedId)
 	// 1
 	if fileID == "" {
 		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
