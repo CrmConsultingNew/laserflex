@@ -131,7 +131,7 @@ func AddProductsRowToDeal(dealID string, productIDs []int, quantities []float64,
 }
 
 // processTask универсальная функция для обработки задач
-func processTask(orderNumber, client, fileName string, smartProcessID, engineerID int, taskType string, groupID int) (int, error) {
+/*func processTask(orderNumber, client, fileName string, smartProcessID, engineerID int, taskType string, groupID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
@@ -218,7 +218,7 @@ func processTask(orderNumber, client, fileName string, smartProcessID, engineerI
 	}
 
 	return taskID, nil
-}
+}*/
 
 func parseCoatingCell(cellValue string) []string {
 	words := strings.Fields(cellValue)
@@ -866,7 +866,7 @@ func AddProductsWithImage(product Product, sectionID string) (int, error) {
 	return response.Result, nil
 }
 
-func processLaser(orderNumber, client, fileName string, smartProcessID, engineerID int) (int, error) {
+/*func processLaser(orderNumber, client, fileName string, smartProcessID, engineerID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
@@ -957,7 +957,7 @@ func processLaser(orderNumber, client, fileName string, smartProcessID, engineer
 	}
 
 	return taskID, nil
-}
+}*/
 
 /*func HandlerAddCustomTaskToParentId(w http.ResponseWriter, r *http.Request) {
 	products, err := processProducts("file.xlsx", 688, 149)
