@@ -59,6 +59,8 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	engineerStr := queryParams.Get("engineer_id")
 	engineerId, _ := strconv.Atoi(engineerStr)
 	deadline := queryParams.Get("deadline")
+	assignedId := queryParams.Get("assigned")
+
 	// 1
 	if fileID == "" {
 		http.Error(w, "Missing file_id parameter", http.StatusBadRequest)
@@ -98,15 +100,15 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	var arrayOfTasksIDsProducts []int
 
 	// Обрабатываем задачи и собираем их ID
-	if taskIDs, err := processLaserWorks(orderNumber, fileName, smartProcessID, deadline, engineerId); err == nil {
+	if taskIDs, err := processLaserWorks(assignedId, orderNumber, fileName, smartProcessID, deadline, engineerId); err == nil {
 		arrayOfTasksIDsLaser = append(arrayOfTasksIDsLaser, taskIDs...)
 	}
 
-	if taskIDs, err := processBendWorks(orderNumber, fileName, smartProcessID, deadline, engineerId); err == nil {
+	if taskIDs, err := processBendWorks(assignedId, orderNumber, fileName, smartProcessID, deadline, engineerId); err == nil {
 		arrayOfTasksIDsBend = append(arrayOfTasksIDsBend, taskIDs...)
 	}
 
-	if taskIDs, err := processPipeCutting(orderNumber, fileName, smartProcessID, deadline, engineerId); err == nil {
+	if taskIDs, err := processPipeCutting(assignedId, orderNumber, fileName, smartProcessID, deadline, engineerId); err == nil {
 		arrayOfTasksIDsPipeCutting = append(arrayOfTasksIDsPipeCutting, taskIDs...)
 	}
 
@@ -119,7 +121,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//log.Printf("!!!!!!!!!!!!!!!Client from Excel: %v\n Order number: %v\n", client, orderNumber)
-	if taskIDs, err := processProducts(orderNumber, client, fileName, smartProcessID, engineerId); err == nil {
+	if taskIDs, err := processProducts(assignedId, orderNumber, client, fileName, smartProcessID, engineerId); err == nil {
 		arrayOfTasksIDsProducts = append(arrayOfTasksIDsProducts, taskIDs)
 	}
 
@@ -183,12 +185,12 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // processLaserWorks обрабатывает столбец "Лазерные работы"
-func processLaserWorks(orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
-	return processTaskCustom(orderNumber, fileName, smartProcessID, "Лазерные работы", 1, deadline, engineerId)
+func processLaserWorks(assignedId string, orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
+	return processTaskCustom(assignedId, orderNumber, fileName, smartProcessID, "Лазерные работы", 1, deadline, engineerId)
 }
 
 // processBendWorks обрабатывает столбец "Гибочные работы"
-func processBendWorks(orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
+func processBendWorks(assignedId string, orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %v", err)
@@ -270,7 +272,7 @@ func processBendWorks(orderNumber string, fileName string, smartProcessID int, d
 		}
 
 		// Создаём задачу
-		taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, engineerId, 10, customFields, smartProcessID, deadline)
+		taskID, err := AddCustomTaskToParentId(assignedId, orderNumber, taskTitle, engineerId, 10, customFields, smartProcessID, deadline)
 		if err != nil {
 			log.Printf("Error creating BendWorks task: %v\n", err)
 			continue
@@ -282,12 +284,12 @@ func processBendWorks(orderNumber string, fileName string, smartProcessID int, d
 }
 
 // processPipeCutting обрабатывает столбец "Труборез"
-func processPipeCutting(orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
-	return processTaskCustom(orderNumber, fileName, smartProcessID, "Труборез", 11, deadline, engineerId)
+func processPipeCutting(assignedId string, orderNumber string, fileName string, smartProcessID int, deadline string, engineerId int) ([]int, error) {
+	return processTaskCustom(assignedId, orderNumber, fileName, smartProcessID, "Труборез", 11, deadline, engineerId)
 }
 
 // processTaskCustom использует AddCustomTaskToParentId для обработки задач
-func processTaskCustom(orderNumber string, fileName string, smartProcessID int, taskType string, groupID int, deadline string, engineerId int) ([]int, error) {
+func processTaskCustom(assignedId string, orderNumber string, fileName string, smartProcessID int, taskType string, groupID int, deadline string, engineerId int) ([]int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %v", err)
@@ -371,7 +373,7 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 		}
 
 		// Создаём задачу
-		taskID, err := AddCustomTaskToParentId(orderNumber, taskTitle, engineerId, groupID, customFields, smartProcessID, deadline)
+		taskID, err := AddCustomTaskToParentId(assignedId, orderNumber, taskTitle, engineerId, groupID, customFields, smartProcessID, deadline)
 		if err != nil {
 			log.Printf("Error creating %s task: %v\n", taskType, err)
 			continue
@@ -382,7 +384,7 @@ func processTaskCustom(orderNumber string, fileName string, smartProcessID int, 
 	return taskIDs, nil
 }
 
-func AddCustomTaskToParentId(orderNumber string, title string, responsibleID int, groupID int, customFields CustomTaskFields, elementID int, deadline string) (int, error) {
+func AddCustomTaskToParentId(assignedId string, orderNumber string, title string, responsibleID int, groupID int, customFields CustomTaskFields, elementID int, deadline string) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -404,6 +406,7 @@ func AddCustomTaskToParentId(orderNumber string, title string, responsibleID int
 		"fields": map[string]interface{}{
 			"TITLE":                title,
 			"RESPONSIBLE_ID":       responsibleID,
+			"CREATED_BY":           assignedId,
 			"GROUP_ID":             groupID,
 			"UF_CRM_TASK":          []string{smartProcessLink},
 			"UF_AUTO_303168834495": []string{orderNumber},
@@ -543,7 +546,7 @@ func pullCustomFieldInSmartProcess(checkCoating bool, entityTypeId, smartProcess
 var ClientCell string
 
 // processProducts обрабатывает столбцы "Производство" и "Нанесение покрытий"
-func processProducts(orderNumber, client, fileName string, smartProcessID, engineerID int) (int, error) {
+func processProducts(assignedId string, orderNumber, client, fileName string, smartProcessID, engineerID int) (int, error) {
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %v", err)
@@ -584,7 +587,7 @@ func processProducts(orderNumber, client, fileName string, smartProcessID, engin
 	}
 
 	// ID основной задачи "Производство"
-	taskID, err := AddTaskToGroup(orderNumber, client, "Производство", engineerID, 2, 1046, smartProcessID)
+	taskID, err := AddTaskToGroup(assignedId, orderNumber, client, "Производство", engineerID, 2, 1046, smartProcessID)
 	if err != nil {
 		return 0, fmt.Errorf("error creating main production task: %v", err)
 	}

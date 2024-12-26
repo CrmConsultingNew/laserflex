@@ -99,7 +99,7 @@ func AddTaskToGroupColor(orderNumber string, client string, title string, respon
 }
 
 // AddTaskToGroup создает задачу и возвращает ID созданной задачи
-func AddTaskToGroup(orderNumber, client, title string, responsibleID, groupID, processTypeID, elementID int) (int, error) {
+func AddTaskToGroup(assignedId string, orderNumber, client, title string, responsibleID, groupID, processTypeID, elementID int) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -115,6 +115,7 @@ func AddTaskToGroup(orderNumber, client, title string, responsibleID, groupID, p
 	requestBody := map[string]interface{}{
 		"fields": map[string]interface{}{
 			"TITLE":                title,
+			"CREATED_BY":           assignedId,
 			"RESPONSIBLE_ID":       responsibleID,
 			"GROUP_ID":             groupID,
 			"UF_CRM_TASK":          []string{smartProcessLink},
