@@ -107,7 +107,7 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 	log.Println("products: ", products)
 	// Обрабатываем каждую строку
 	for i, cells := range rows {
-		if i == 0 || len(cells) < 16 { // Пропускаем заголовок и проверяем минимальное количество столбцов
+		if i == 0 || len(cells) < 20 { // Пропускаем заголовок и проверяем минимальное количество столбцов
 			continue
 		}
 
@@ -117,7 +117,7 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			if name == "" || strings.EqualFold(name, "Доставка") || strings.Contains(strings.ToLower(name), "общее") {
 				fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i+1, name)
 				fmt.Println("Here function is break...")
-				continue
+				break
 			}
 		}
 		fmt.Println("Here function is work next...")
