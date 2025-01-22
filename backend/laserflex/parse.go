@@ -116,10 +116,11 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			name := strings.TrimSpace(cells[0]) // Убираем лишние пробелы
 			if name == "" || strings.EqualFold(name, "Доставка") || strings.Contains(strings.ToLower(name), "общее") {
 				fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i+1, name)
+				fmt.Println("Here function is break...")
 				break
 			}
 		}
-
+		fmt.Println("Here function is work next...")
 		// Получение Base64 строки изображения из ячейки
 		imageBase64 := ""
 		imageData, err := getImageBase64FromExcel(f, "Статистика", fmt.Sprintf("D%d", i+1))
