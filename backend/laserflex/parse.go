@@ -117,7 +117,7 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			if name == "" || strings.EqualFold(name, "Доставка") || strings.Contains(strings.ToLower(name), "общее") {
 				fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i+1, name)
 				fmt.Println("Here function is break...")
-				break
+				continue
 			}
 		}
 		fmt.Println("Here function is work next...")
