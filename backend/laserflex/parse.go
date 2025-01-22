@@ -107,19 +107,28 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 	log.Println("products: ", products)
 	// Обрабатываем каждую строку
 	for i, cells := range rows {
-		if i == 0 || len(cells) < 20 { // Пропускаем заголовок и проверяем минимальное количество столбцов
+		if i == 0 || len(cells) < 16 { // Пропускаем заголовок и проверяем минимальное количество столбцов
 			continue
 		}
 
 		// Проверяем первую ячейку на условия завершения
 		if len(cells) > 0 {
 			name := strings.TrimSpace(cells[0]) // Убираем лишние пробелы
-			if name == "" || strings.EqualFold(name, "Доставка") || strings.Contains(strings.ToLower(name), "общее") {
+			if name == "" {
+				fmt.Printf("Skipping empty row at %d\n", i+1)
+				continue // Пропускаем строку вместо завершения
+			}
+			if strings.EqualFold(name, "Доставка") || strings.Contains(strings.ToLower(name), "общее") {
 				fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i+1, name)
-				fmt.Println("Here function is break...")
 				break
 			}
 		}
+
+		if len(cells) < 16 { // Если количество столбцов меньше ожидаемого, пропускаем строку
+			fmt.Printf("Skipping incomplete row at %d: len(cells)=%d\n", i+1, len(cells))
+			continue
+		}
+
 		fmt.Println("Here function is work next...")
 		// Получение Base64 строки изображения из ячейки
 		imageBase64 := ""
