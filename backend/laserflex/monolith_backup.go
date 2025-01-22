@@ -458,7 +458,7 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			name := strings.TrimSpace(cells[0]) // Убираем лишние пробелы
 			if name == "" || strings.EqualFold(name, "Доставка") || strings.Contains(strings.ToLower(name), "общее") {
 				fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i+1, name)
-				break
+				continue
 			}
 		}
 
