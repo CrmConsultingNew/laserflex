@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/xuri/excelize/v2"
-	"log"
 	"math"
 	"regexp"
 	"strconv"
@@ -104,23 +103,32 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 
 	var products []Product
 
-	log.Println("products: ", products)
+	// Лог всех строк из таблицы
+	fmt.Println("All rows from the sheet:")
+	for rowIndex, row := range rows {
+		fmt.Printf("Row %d: %v\n", rowIndex+1, row)
+	}
+
 	// Обрабатываем каждую строку
 	for i, cells := range rows {
-		if i == 0 || len(cells) < 16 { // Пропускаем заголовок и проверяем минимальное количество столбцов
+		fmt.Printf("\nProcessing Row %d: %v\n", i+1, cells)
+
+		if i == 0 { // Пропускаем заголовок
+			fmt.Println("Skipping header row.")
 			continue
 		}
 
 		// Проверяем первую ячейку на условия завершения
 		if len(cells) > 0 {
 			name := strings.TrimSpace(cells[0]) // Убираем лишние пробелы
+			fmt.Printf("Cell A%d: '%s'\n", i+1, name)
 			if name == "" {
 				fmt.Printf("Skipping empty row at %d\n", i+1)
-				continue // Пропускаем строку вместо завершения
+				continue
 			}
-			if strings.EqualFold(name, "Доставка") || strings.Contains(strings.ToLower(name), "общее") {
+			if strings.Contains(strings.ToLower(name), "общее") {
 				fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i+1, name)
-				break
+				break // Завершаем обработку таблицы
 			}
 		}
 
@@ -129,12 +137,17 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			continue
 		}
 
-		fmt.Println("Here function is work next...")
+		// Лог значений в текущей строке
+		for colIndex, cellValue := range cells {
+			fmt.Printf("Cell %s%d: '%s'\n", string(rune('A'+colIndex)), i+1, cellValue)
+		}
+
 		// Получение Base64 строки изображения из ячейки
 		imageBase64 := ""
 		imageData, err := getImageBase64FromExcel(f, "Статистика", fmt.Sprintf("D%d", i+1))
 		if err == nil {
 			imageBase64 = imageData
+			fmt.Printf("ImageBase64 for Row %d: [Length: %d]\n", i+1, len(imageBase64))
 		} else {
 			fmt.Printf("Warning: unable to get image for row %d: %v\n", i+1, err)
 		}
@@ -144,8 +157,9 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 		for _, colIndex := range []int{7, 9, 10, 11, 12, 13, 14} {
 			if colIndex < len(cells) && cells[colIndex] != "" {
 				production += parseFloatOrInt(cells[colIndex])
+				fmt.Printf("Adding value from Column %s, Row %d: '%s'\n", string(rune('A'+colIndex)), i+1, cells[colIndex])
 			} else {
-				fmt.Printf("Warning: missing or empty value at column %d, row %d\n", colIndex, i+1)
+				fmt.Printf("Missing or empty value at Column %s, Row %d\n", string(rune('A'+colIndex)), i+1)
 			}
 		}
 
@@ -153,7 +167,7 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 		product := Product{
 			Name:        cells[0],
 			Quantity:    parseFloatOrInt(cells[1]),
-			Price:       parsePrice(cells[2]), // Используем parsePrice для обработки столбца C
+			Price:       parsePrice(cells[2]),
 			ImageBase64: imageBase64,
 			Material:    parseFloatOrInt(cells[4]),
 			Laser:       parseFloatOrInt(cells[5]),
@@ -170,7 +184,11 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 		fmt.Printf("Parsed Product: %+v\n", product)
 	}
 
-	fmt.Println("Excel processing completed.")
+	fmt.Println("\nExcel processing completed. Parsed Products:")
+	for _, product := range products {
+		fmt.Printf("%+v\n", product)
+	}
+
 	return products, nil
 }
 
@@ -193,7 +211,7 @@ func getImageBase64FromExcel(f *excelize.File, sheet, cell string) (string, erro
 }
 
 // Извлекает данные для указанных столбцов
-func extractData(cells []string, headers map[string]int, columns []string) map[string]string {
+func ExtractData(cells []string, headers map[string]int, columns []string) map[string]string {
 	data := make(map[string]string)
 	for _, column := range columns {
 		index := headers[column]
@@ -205,7 +223,7 @@ func extractData(cells []string, headers map[string]int, columns []string) map[s
 }
 
 // Получает значение из ячейки или возвращает пустую строку, если индекс выходит за пределы
-func getValue(cells []string, index int) string {
+func GetValue(cells []string, index int) string {
 	if index >= 0 && index < len(cells) {
 		return cells[index]
 	}

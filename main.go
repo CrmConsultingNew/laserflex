@@ -18,9 +18,11 @@ func main() {
 
 	//laserflex.ReadXlsRegistryWithConditions("file.xlsx")
 
-	/*laserflex.ReadXlsProducts("file_downloaded_xls1.xlsx")
-	laserflex.ReadXlsProductRow("file_downloaded_xls1.xlsx")
-	return*/
+	//laserflex.ReadXlsProducts("file_downloaded_xls1.xlsx")
+
+	/*	laserflex.ReadXlsProductRows("file_downloaded_xls1.xlsx")
+
+		return*/
 
 	/*fileName := "file.xlsx"
 	if laserflex.CheckCoatingColumn(fileName) {

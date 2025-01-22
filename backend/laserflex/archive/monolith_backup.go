@@ -325,37 +325,37 @@ func ReadXlsRegistryWithConditions(filename string) ([]ParsedData, error) {
 		parsedRow := ParsedData{}
 
 		// Проверяем условия для каждого столбца
-		if value := laserflex.getValue(cells, headers["Лазерные работы"]); value != "" {
+		if value := laserflex.GetValue(cells, headers["Лазерные работы"]); value != "" {
 			parsedRow.LaserWorks = &WorkGroup{
 				GroupID: 1,
-				Data: laserflex.extractData(cells, headers, []string{
+				Data: laserflex.ExtractData(cells, headers, []string{
 					"№ заказа", "Заказчик", "Менеджер", "Количество материала", "Лазерные работы", "Нанесение покрытий", "Комментарий",
 				}),
 			}
 		}
 
-		if value := laserflex.getValue(cells, headers["Труборез"]); value != "" {
+		if value := laserflex.GetValue(cells, headers["Труборез"]); value != "" {
 			parsedRow.PipeCutting = &WorkGroup{
 				GroupID: 11,
-				Data: laserflex.extractData(cells, headers, []string{
+				Data: laserflex.ExtractData(cells, headers, []string{
 					"№ заказа", "Заказчик", "Менеджер", "Количество материала", "Труборез", "Нанесение покрытий", "Комментарий",
 				}),
 			}
 		}
 
-		if value := laserflex.getValue(cells, headers["Гибочные работы"]); value != "" {
+		if value := laserflex.GetValue(cells, headers["Гибочные работы"]); value != "" {
 			parsedRow.BendWorks = &WorkGroup{
 				GroupID: 10,
-				Data: laserflex.extractData(cells, headers, []string{
+				Data: laserflex.ExtractData(cells, headers, []string{
 					"№ заказа", "Заказчик", "Менеджер", "Количество материала", "Гибочные работы", "Нанесение покрытий", "Комментарий",
 				}),
 			}
 		}
 
-		if value := laserflex.getValue(cells, headers["Производство"]); value != "" {
+		if value := laserflex.GetValue(cells, headers["Производство"]); value != "" {
 			parsedRow.Production = &WorkGroup{
 				GroupID: 2,
-				Data: laserflex.extractData(cells, headers, []string{
+				Data: laserflex.ExtractData(cells, headers, []string{
 					"№ заказа", "Заказчик", "Менеджер", "Количество материала", "Производство", "Нанесение покрытий", "Комментарий",
 				}),
 			}
