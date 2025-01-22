@@ -1,6 +1,7 @@
 package laserflex
 
 import (
+	"bitrix_app/backend/laserflex/models"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -200,7 +201,7 @@ func GenerateSmartProcessLink(processTypeID, elementID int) string {
 // ID группы 2 - Производство
 
 // AddTaskToParentId создает подзадачу с привязкой к PARENT_ID и пользовательскими полями
-func AddTaskToParentId(title string, responsibleID, groupID, parentID int, customFields CustomTaskFields) (int, error) {
+func AddTaskToParentId(title string, responsibleID, groupID, parentID int, customFields models.CustomTaskFields) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -286,7 +287,7 @@ func AddTaskToParentId(title string, responsibleID, groupID, parentID int, custo
 	return taskID, nil
 }
 
-func AddCustomCoatingTask(title string, responsibleID, groupID int, customFields CustomTaskFields, elementID int, colorArray []string) (int, error) {
+func AddCustomCoatingTask(title string, responsibleID, groupID int, customFields models.CustomTaskFields, elementID int, colorArray []string) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
@@ -336,7 +337,7 @@ func AddCustomCoatingTask(title string, responsibleID, groupID int, customFields
 
 	log.Printf("Attention!!!!!!!!! AddCustomTaskToParentId Response from Bitrix24: %s\n", string(responseData))
 
-	var response TaskResponse
+	var response models.TaskResponse
 	if err := json.Unmarshal(responseData, &response); err != nil {
 		return 0, fmt.Errorf("error unmarshalling response: %v", err)
 	}

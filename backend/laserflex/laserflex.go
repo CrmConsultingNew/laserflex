@@ -1,6 +1,7 @@
 package laserflex
 
 import (
+	"bitrix_app/backend/laserflex/models"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -333,7 +334,7 @@ func processBendWorks(assignedId int, orderNumber string, fileName string, smart
 
 		taskTitle := fmt.Sprintf("Гибка %s %s", orderNumber, laserWorksValue)
 
-		customFields := CustomTaskFields{
+		customFields := models.CustomTaskFields{
 			OrderNumber:       orderNumber,
 			Customer:          row[headers["Заказчик"]],
 			Material:          materialValue, // Используем значение из столбца "Количество материала"
@@ -433,7 +434,7 @@ func processTaskCustom(assignedId int, orderNumber string, fileName string, smar
 			taskTitle = fmt.Sprintf("%s %s", orderNumber, row[headers[taskType]])
 		}
 
-		customFields := CustomTaskFields{
+		customFields := models.CustomTaskFields{
 			OrderNumber:       row[headers["Заказчик"]],
 			Customer:          row[headers["Заказчик"]],
 			Quantity:          row[headers["Количество материала"]],
@@ -454,7 +455,7 @@ func processTaskCustom(assignedId int, orderNumber string, fileName string, smar
 	return taskIDs, nil
 }
 
-func AddCustomTaskToParentId(assignedId int, orderNumber string, title string, responsibleID int, groupID int, customFields CustomTaskFields, elementID int, deadline string) (int, error) {
+func AddCustomTaskToParentId(assignedId int, orderNumber string, title string, responsibleID int, groupID int, customFields models.CustomTaskFields, elementID int, deadline string) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "tasks.task.add"
 	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)

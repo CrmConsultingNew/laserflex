@@ -1,4 +1,4 @@
-package laserflex
+package models
 
 import "encoding/json"
 
