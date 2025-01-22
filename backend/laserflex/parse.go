@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/xuri/excelize/v2"
+	"log"
 	"math"
 	"regexp"
 	"strconv"
@@ -103,6 +104,7 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 
 	var products []Product
 
+	log.Println("products: ", products)
 	// Обрабатываем каждую строку
 	for i, cells := range rows {
 		if i == 0 || len(cells) < 16 { // Пропускаем заголовок и проверяем минимальное количество столбцов
