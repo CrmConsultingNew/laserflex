@@ -112,6 +112,7 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 	// Обрабатываем каждую строку
 	for i, cells := range rows {
 		fmt.Printf("\nProcessing Row %d: %v\n", i+1, cells)
+		fmt.Printf("Row %d length: %d\n", i+1, len(cells)) // Добавленный лог
 
 		if i == 0 { // Пропускаем заголовок
 			fmt.Println("Skipping header row.")
