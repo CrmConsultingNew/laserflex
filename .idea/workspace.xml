@@ -4,12 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4777308f-843b-41bb-9def-5ab1b57ee989" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/laserflex/archive/monolith_backup.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/laserflex/archive/monolith_backup.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/laserflex/parse.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/laserflex/parse.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
-    </list>
+    <list default="true" id="4777308f-843b-41bb-9def-5ab1b57ee989" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -56,11 +51,11 @@
     "RunOnceActivity.go.modules.automatic.dependencies.download": "true",
     "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "<unknown>",
     "go.import.settings.migrated": "true",
     "go.sdk.automatically.set": "true",
     "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "E:/Projects/Laserflex",
+    "last_opened_file_path": "D:/Projects/Laserflex",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
@@ -93,8 +88,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-gosdk-d297c17c1fbd-85c80fddc9a6-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-243.23654.119" />
-        <option value="bundled-js-predefined-d6986cc7102b-822845ee3bb5-JavaScript-GO-243.23654.119" />
+        <option value="bundled-gosdk-d297c17c1fbd-85c80fddc9a6-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-243.23654.166" />
+        <option value="bundled-js-predefined-d6986cc7102b-822845ee3bb5-JavaScript-GO-243.23654.166" />
       </set>
     </attachedChunks>
   </component>

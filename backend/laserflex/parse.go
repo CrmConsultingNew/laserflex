@@ -95,89 +95,68 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 	}
 	defer f.Close()
 
-	// Читаем строки из листа "Статистика"
-	rows, err := f.GetRows("Статистика")
+	var products []Product
+	const sheet = "Статистика"
+
+	// Определяем количество строк
+	rows, err := f.GetRows(sheet)
 	if err != nil {
 		return nil, fmt.Errorf("error reading rows: %v", err)
 	}
 
-	var products []Product
-
-	// Лог всех строк из таблицы
-	fmt.Println("All rows from the sheet:")
-	for rowIndex, row := range rows {
-		fmt.Printf("Row %d: %v\n", rowIndex+1, row)
-	}
+	numRows := len(rows)
 
 	// Обрабатываем каждую строку
-	for i, cells := range rows {
-		fmt.Printf("\nProcessing Row %d: %v\n", i+1, cells)
-
-		if i == 0 { // Пропускаем заголовок
-			fmt.Println("Skipping header row.")
+	for i := 2; i <= numRows; i++ { // Начинаем с 2, т.к. 1 - заголовок
+		name, _ := f.GetCellValue(sheet, fmt.Sprintf("A%d", i))
+		if strings.TrimSpace(name) == "" {
+			fmt.Printf("Skipping empty row at %d\n", i)
 			continue
 		}
-
-		// Проверяем первую ячейку на условия завершения
-		if len(cells) > 0 {
-			name := strings.TrimSpace(cells[0]) // Убираем лишние пробелы
-			fmt.Printf("Cell A%d: '%s'\n", i+1, name)
-			if name == "" {
-				fmt.Printf("Skipping empty row at %d\n", i+1)
-				continue
-			}
-			if strings.Contains(strings.ToLower(name), "общее") {
-				fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i+1, name)
-				break // Завершаем обработку таблицы
-			}
+		if strings.Contains(strings.ToLower(name), "общее") {
+			fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i, name)
+			break
 		}
 
-		if len(cells) < 16 { // Если количество столбцов меньше ожидаемого, пропускаем строку
-			fmt.Printf("Skipping incomplete row at %d: len(cells)=%d\n", i+1, len(cells))
-			continue
-		}
-
-		// Лог значений в текущей строке
-		for colIndex, cellValue := range cells {
-			fmt.Printf("Cell %s%d: '%s'\n", string(rune('A'+colIndex)), i+1, cellValue)
-		}
-
-		// Получение Base64 строки изображения из ячейки
 		imageBase64 := ""
-		imageData, err := getImageBase64FromExcel(f, "Статистика", fmt.Sprintf("D%d", i+1))
-		if err == nil {
-			imageBase64 = imageData
-			fmt.Printf("ImageBase64 for Row %d: [Length: %d]\n", i+1, len(imageBase64))
+		if imgData, err := getImageBase64FromExcel(f, sheet, fmt.Sprintf("D%d", i)); err == nil {
+			imageBase64 = imgData
 		} else {
-			fmt.Printf("Warning: unable to get image for row %d: %v\n", i+1, err)
+			fmt.Printf("Warning: unable to get image for row %d: %v\n", i, err)
 		}
 
-		// Суммируем для Production
 		production := 0.0
-		for _, colIndex := range []int{7, 9, 10, 11, 12, 13, 14} {
-			if colIndex < len(cells) && cells[colIndex] != "" {
-				production += parseFloatOrInt(cells[colIndex])
-				fmt.Printf("Adding value from Column %s, Row %d: '%s'\n", string(rune('A'+colIndex)), i+1, cells[colIndex])
-			} else {
-				fmt.Printf("Missing or empty value at Column %s, Row %d\n", string(rune('A'+colIndex)), i+1)
-			}
+		for _, col := range []string{"H", "J", "K", "L", "M", "N", "O"} {
+			val, _ := f.GetCellValue(sheet, fmt.Sprintf("%s%d", col, i))
+			production += parseFloatOrInt(strings.TrimSpace(val))
 		}
 
-		// Создаём объект Product
+		// Получаем и преобразуем значения столбцов
+		quantityStr, _ := f.GetCellValue(sheet, fmt.Sprintf("B%d", i))
+		priceStr, _ := f.GetCellValue(sheet, fmt.Sprintf("C%d", i))
+		materialStr, _ := f.GetCellValue(sheet, fmt.Sprintf("E%d", i))
+		laserStr, _ := f.GetCellValue(sheet, fmt.Sprintf("F%d", i))
+		bendStr, _ := f.GetCellValue(sheet, fmt.Sprintf("G%d", i))
+		weldStr, _ := f.GetCellValue(sheet, fmt.Sprintf("H%d", i))
+		paintStr, _ := f.GetCellValue(sheet, fmt.Sprintf("I%d", i))
+		addPStr, _ := f.GetCellValue(sheet, fmt.Sprintf("N%d", i))
+		addLStr, _ := f.GetCellValue(sheet, fmt.Sprintf("O%d", i))
+		pipeCuttingStr, _ := f.GetCellValue(sheet, fmt.Sprintf("P%d", i))
+
 		product := Product{
-			Name:        cells[0],
-			Quantity:    parseFloatOrInt(cells[1]),
-			Price:       parsePrice(cells[2]),
+			Name:        name,
+			Quantity:    parseFloatOrInt(strings.TrimSpace(quantityStr)),
+			Price:       parsePrice(strings.TrimSpace(priceStr)),
 			ImageBase64: imageBase64,
-			Material:    parseFloatOrInt(cells[4]),
-			Laser:       parseFloatOrInt(cells[5]),
-			Bend:        parseFloatOrInt(cells[6]),
-			Weld:        parseFloatOrInt(cells[7]),
-			Paint:       parseFloatOrInt(cells[8]),
+			Material:    parseFloatOrInt(strings.TrimSpace(materialStr)),
+			Laser:       parseFloatOrInt(strings.TrimSpace(laserStr)),
+			Bend:        parseFloatOrInt(strings.TrimSpace(bendStr)),
+			Weld:        parseFloatOrInt(strings.TrimSpace(weldStr)),
+			Paint:       parseFloatOrInt(strings.TrimSpace(paintStr)),
 			Production:  production,
-			AddP:        parseFloatOrInt(cells[13]),
-			AddL:        parseFloatOrInt(cells[14]),
-			PipeCutting: parseFloatOrInt(cells[15]),
+			AddP:        parseFloatOrInt(strings.TrimSpace(addPStr)),
+			AddL:        parseFloatOrInt(strings.TrimSpace(addLStr)),
+			PipeCutting: parseFloatOrInt(strings.TrimSpace(pipeCuttingStr)),
 		}
 
 		products = append(products, product)
