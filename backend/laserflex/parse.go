@@ -84,7 +84,6 @@ func parseFloatOrInt(input string) float64 {
 	return value
 }
 
-// Функция для чтения строк из Excel
 func ReadXlsProductRows(filename string) ([]Product, error) {
 	fmt.Println("Processing Excel file...")
 
@@ -95,90 +94,77 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 	}
 	defer f.Close()
 
-	// Читаем строки из листа "Статистика"
+	var products []Product
+
+	// Найти номер последней строки
 	rows, err := f.GetRows("Статистика")
 	if err != nil {
 		return nil, fmt.Errorf("error reading rows: %v", err)
 	}
+	lastRow := len(rows)
 
-	var products []Product
+	// Обрабатываем каждую строку, начиная со 2-й (пропускаем заголовок)
+	for i := 2; i <= lastRow; i++ {
+		fmt.Printf("\nProcessing Row %d\n", i)
 
-	// Лог всех строк из таблицы
-	fmt.Println("All rows from the sheet:")
-	for rowIndex, row := range rows {
-		fmt.Printf("Row %d: %v\n", rowIndex+1, row)
-	}
+		// Читаем значения ячеек вручную
+		name, _ := f.GetCellValue("Статистика", fmt.Sprintf("A%d", i))
+		quantity, _ := f.GetCellValue("Статистика", fmt.Sprintf("B%d", i))
+		price, _ := f.GetCellValue("Статистика", fmt.Sprintf("C%d", i))
 
-	// Обрабатываем каждую строку
-	for i, cells := range rows {
-		fmt.Printf("\nProcessing Row %d: %v\n", i+1, cells)
-		fmt.Printf("Row %d length: %d\n", i+1, len(cells)) // Добавленный лог
-
-		if i == 0 { // Пропускаем заголовок
-			fmt.Println("Skipping header row.")
+		// Проверяем, если первая ячейка пустая или содержит "общее", завершаем обработку
+		name = strings.TrimSpace(name)
+		if name == "" {
+			fmt.Printf("Skipping empty row at %d\n", i)
 			continue
 		}
-
-		// Проверяем первую ячейку на условия завершения
-		if len(cells) > 0 {
-			name := strings.TrimSpace(cells[0]) // Убираем лишние пробелы
-			fmt.Printf("Cell A%d: '%s'\n", i+1, name)
-			if name == "" {
-				fmt.Printf("Skipping empty row at %d\n", i+1)
-				continue
-			}
-			if strings.Contains(strings.ToLower(name), "общее") {
-				fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i+1, name)
-				break // Завершаем обработку таблицы
-			}
+		if strings.Contains(strings.ToLower(name), "общее") {
+			fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i, name)
+			break
 		}
 
-		if len(cells) < 16 { // Если количество столбцов меньше ожидаемого, пропускаем строку
-			fmt.Printf("Skipping incomplete row at %d: len(cells)=%d\n", i+1, len(cells))
-			continue
-		}
+		// Читаем остальные значения
+		material, _ := f.GetCellValue("Статистика", fmt.Sprintf("E%d", i))
+		laser, _ := f.GetCellValue("Статистика", fmt.Sprintf("F%d", i))
+		bend, _ := f.GetCellValue("Статистика", fmt.Sprintf("G%d", i))
+		weld, _ := f.GetCellValue("Статистика", fmt.Sprintf("H%d", i))
+		paint, _ := f.GetCellValue("Статистика", fmt.Sprintf("I%d", i))
+		addP, _ := f.GetCellValue("Статистика", fmt.Sprintf("N%d", i))
+		addL, _ := f.GetCellValue("Статистика", fmt.Sprintf("O%d", i))
+		pipeCutting, _ := f.GetCellValue("Статистика", fmt.Sprintf("P%d", i))
 
-		// Лог значений в текущей строке
-		for colIndex, cellValue := range cells {
-			fmt.Printf("Cell %s%d: '%s'\n", string(rune('A'+colIndex)), i+1, cellValue)
-		}
-
-		// Получение Base64 строки изображения из ячейки
+		// Читаем Base64-изображение
 		imageBase64 := ""
-		imageData, err := getImageBase64FromExcel(f, "Статистика", fmt.Sprintf("D%d", i+1))
+		imageData, err := getImageBase64FromExcel(f, "Статистика", fmt.Sprintf("D%d", i))
 		if err == nil {
 			imageBase64 = imageData
-			fmt.Printf("ImageBase64 for Row %d: [Length: %d]\n", i+1, len(imageBase64))
+			fmt.Printf("ImageBase64 for Row %d: [Length: %d]\n", i, len(imageBase64))
 		} else {
-			fmt.Printf("Warning: unable to get image for row %d: %v\n", i+1, err)
+			fmt.Printf("Warning: unable to get image for row %d: %v\n", i, err)
 		}
 
 		// Суммируем для Production
 		production := 0.0
-		for _, colIndex := range []int{7, 9, 10, 11, 12, 13, 14} {
-			if colIndex < len(cells) && cells[colIndex] != "" {
-				production += parseFloatOrInt(cells[colIndex])
-				fmt.Printf("Adding value from Column %s, Row %d: '%s'\n", string(rune('A'+colIndex)), i+1, cells[colIndex])
-			} else {
-				fmt.Printf("Missing or empty value at Column %s, Row %d\n", string(rune('A'+colIndex)), i+1)
-			}
+		for _, col := range []string{"H", "J", "K", "L", "M", "N", "O"} {
+			val, _ := f.GetCellValue("Статистика", fmt.Sprintf("%s%d", col, i))
+			production += parseFloatOrInt(val)
 		}
 
 		// Создаём объект Product
 		product := Product{
-			Name:        cells[0],
-			Quantity:    parseFloatOrInt(cells[1]),
-			Price:       parsePrice(cells[2]),
+			Name:        name,
+			Quantity:    parseFloatOrInt(quantity),
+			Price:       parsePrice(price),
 			ImageBase64: imageBase64,
-			Material:    parseFloatOrInt(cells[4]),
-			Laser:       parseFloatOrInt(cells[5]),
-			Bend:        parseFloatOrInt(cells[6]),
-			Weld:        parseFloatOrInt(cells[7]),
-			Paint:       parseFloatOrInt(cells[8]),
+			Material:    parseFloatOrInt(material),
+			Laser:       parseFloatOrInt(laser),
+			Bend:        parseFloatOrInt(bend),
+			Weld:        parseFloatOrInt(weld),
+			Paint:       parseFloatOrInt(paint),
 			Production:  production,
-			AddP:        parseFloatOrInt(cells[13]),
-			AddL:        parseFloatOrInt(cells[14]),
-			PipeCutting: parseFloatOrInt(cells[15]),
+			AddP:        parseFloatOrInt(addP),
+			AddL:        parseFloatOrInt(addL),
+			PipeCutting: parseFloatOrInt(pipeCutting),
 		}
 
 		products = append(products, product)
