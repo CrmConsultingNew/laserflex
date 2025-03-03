@@ -111,6 +111,14 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 		name, _ := f.GetCellValue("Статистика", fmt.Sprintf("A%d", i))
 		quantity, _ := f.GetCellValue("Статистика", fmt.Sprintf("B%d", i))
 		price, _ := f.GetCellValue("Статистика", fmt.Sprintf("C%d", i))
+		material, _ := f.GetCellValue("Статистика", fmt.Sprintf("E%d", i))
+		laser, _ := f.GetCellValue("Статистика", fmt.Sprintf("F%d", i))
+		bend, _ := f.GetCellValue("Статистика", fmt.Sprintf("G%d", i))
+		weld, _ := f.GetCellValue("Статистика", fmt.Sprintf("H%d", i))
+		paint, _ := f.GetCellValue("Статистика", fmt.Sprintf("I%d", i))
+		addP, _ := f.GetCellValue("Статистика", fmt.Sprintf("N%d", i))
+		addL, _ := f.GetCellValue("Статистика", fmt.Sprintf("O%d", i))
+		pipeCutting, _ := f.GetCellValue("Статистика", fmt.Sprintf("P%d", i))
 
 		// Проверяем, если первая ячейка пустая или содержит "общее", завершаем обработку
 		name = strings.TrimSpace(name)
@@ -122,16 +130,6 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 			fmt.Printf("Terminating parsing at row %d: Name='%s'\n", i, name)
 			break
 		}
-
-		// Читаем остальные значения
-		material, _ := f.GetCellValue("Статистика", fmt.Sprintf("E%d", i))
-		laser, _ := f.GetCellValue("Статистика", fmt.Sprintf("F%d", i))
-		bend, _ := f.GetCellValue("Статистика", fmt.Sprintf("G%d", i))
-		weld, _ := f.GetCellValue("Статистика", fmt.Sprintf("H%d", i))
-		paint, _ := f.GetCellValue("Статистика", fmt.Sprintf("I%d", i))
-		addP, _ := f.GetCellValue("Статистика", fmt.Sprintf("N%d", i))
-		addL, _ := f.GetCellValue("Статистика", fmt.Sprintf("O%d", i))
-		pipeCutting, _ := f.GetCellValue("Статистика", fmt.Sprintf("P%d", i))
 
 		// Читаем Base64-изображение
 		imageBase64 := ""
@@ -147,24 +145,27 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 		production := 0.0
 		for _, col := range []string{"H", "J", "K", "L", "M", "N", "O"} {
 			val, _ := f.GetCellValue("Статистика", fmt.Sprintf("%s%d", col, i))
+			if val == "" {
+				val = "0" // Фикс ошибки пустого значения
+			}
 			production += parseFloatOrInt(val)
 		}
 
-		// Создаём объект Product
+		// Парсим все числовые значения (заменяя "" на "0")
 		product := Product{
 			Name:        name,
-			Quantity:    parseFloatOrInt(quantity),
-			Price:       parsePrice(price),
+			Quantity:    parseFloatOrInt(safeValue(quantity)),
+			Price:       parsePrice(safeValue(price)),
 			ImageBase64: imageBase64,
-			Material:    parseFloatOrInt(material),
-			Laser:       parseFloatOrInt(laser),
-			Bend:        parseFloatOrInt(bend),
-			Weld:        parseFloatOrInt(weld),
-			Paint:       parseFloatOrInt(paint),
+			Material:    parseFloatOrInt(safeValue(material)),
+			Laser:       parseFloatOrInt(safeValue(laser)),
+			Bend:        parseFloatOrInt(safeValue(bend)),
+			Weld:        parseFloatOrInt(safeValue(weld)),
+			Paint:       parseFloatOrInt(safeValue(paint)),
 			Production:  production,
-			AddP:        parseFloatOrInt(addP),
-			AddL:        parseFloatOrInt(addL),
-			PipeCutting: parseFloatOrInt(pipeCutting),
+			AddP:        parseFloatOrInt(safeValue(addP)),
+			AddL:        parseFloatOrInt(safeValue(addL)),
+			PipeCutting: parseFloatOrInt(safeValue(pipeCutting)),
 		}
 
 		products = append(products, product)
@@ -177,6 +178,14 @@ func ReadXlsProductRows(filename string) ([]Product, error) {
 	}
 
 	return products, nil
+}
+
+// Функция для замены пустых значений на "0"
+func safeValue(input string) string {
+	if input == "" {
+		return "0"
+	}
+	return input
 }
 
 // getImageBase64FromExcel извлекает изображение из ячейки и возвращает его в виде строки Base64
