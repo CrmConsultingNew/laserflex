@@ -2,7 +2,6 @@ package main
 
 import (
 	"bitrix_app/backend/bitrix/endpoints"
-	"bitrix_app/backend/laserflex"
 	"bitrix_app/backend/routes"
 	"fmt"
 	"github.com/joho/godotenv"
@@ -21,9 +20,9 @@ func main() {
 
 	//laserflex.ReadXlsProducts("file_downloaded_xls1.xlsx")
 
-	laserflex.ReadXlsProductRows("file_downloaded_xls1.xlsx")
+	/*laserflex.ReadXlsProductRows("file_downloaded_xls1.xlsx")
 
-	return
+	return*/
 
 	/*fileName := "file.xlsx"
 	if laserflex.CheckCoatingColumn(fileName) {
