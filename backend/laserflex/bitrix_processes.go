@@ -253,7 +253,7 @@ func AddProductsWithImage(product Product, sectionID string) (int, error) {
 	webHookUrl := "https://bitrix.laser-flex.ru/rest/149/5cycej8804ip47im/"
 	bitrixMethod := "crm.product.add"
 
-	requestURL := fmt.Sprintf("AddProductsWithImage: %s %s", webHookUrl, bitrixMethod)
+	requestURL := fmt.Sprintf("%s%s", webHookUrl, bitrixMethod)
 
 	requestBody := map[string]interface{}{
 		"fields": map[string]interface{}{
