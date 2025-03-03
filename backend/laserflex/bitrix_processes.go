@@ -274,6 +274,7 @@ func AddProductsWithImage(product Product, sectionID string) (int, error) {
 			"PROPERTY_203": product.PipeCutting,
 		},
 	}
+	log.Printf("AddProductsWithImage request: %+v", requestBody)
 
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
@@ -307,6 +308,8 @@ func AddProductsWithImage(product Product, sectionID string) (int, error) {
 	}
 
 	log.Println("Product added with ID:", response.Result)
+	log.Printf("AddProductsWithImage response: %s", responseData)
+
 	return response.Result, nil
 }
 

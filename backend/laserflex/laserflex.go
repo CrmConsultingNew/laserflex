@@ -98,6 +98,10 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 
 	// Скачиваем файл
 	fileName := fmt.Sprintf("file_downloaded_xls%d.xlsx", downloadCounter)
+
+	log.Printf("Downloading file from: %s", fileDetails.DownloadURL)
+	log.Printf("Expected filename: %s", fileName)
+
 	err = downloadFile(fileDetails.DownloadURL, downloadCounter)
 	if err != nil {
 		log.Printf("Error downloading file: %v\n", err)
@@ -118,6 +122,7 @@ func LaserflexGetFile(w http.ResponseWriter, r *http.Request) {
 	var productIDs []int
 	var totalProductsPrice float64
 
+	log.Printf("Products main func: %v\n", products)
 	for _, product := range products {
 		productID, err := AddProductsWithImage(product, "52")
 		if err != nil {
